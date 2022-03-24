@@ -176,7 +176,7 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://solotzg.github.io/2022/03/24/tiflash-distributed-storage-and-transaction-system/">
+    <link itemprop="mainEntityOfPage" href="https://solotzg.github.io/2022/03/24/pingcap/date-block-sort/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -194,7 +194,79 @@
     </span>
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
-          <a href="/2022/03/24/tiflash-distributed-storage-and-transaction-system/" class="post-title-link" itemprop="url">The architecture of TiFlash's distributed storage engine and transaction layer</a>
+          <a href="/2022/03/24/pingcap/date-block-sort/" class="post-title-link" itemprop="url">浅析数据块排序</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+      
+
+      <time title="Created: 2022-03-24 14:57:35 / Modified: 15:03:45" itemprop="dateCreated datePublished" datetime="2022-03-24T14:57:35+08:00">2022-03-24</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <h2 id="Abstract"><a href="#Abstract" class="headerlink" title="Abstract"></a>Abstract</h2><p>目前主流的数据库引擎可按照实现方式分为以下几种：B+ Tree、LSM、Delta Main。在类 LSM 的存储方案中，RocksDB 和 Kudu 之流通过 append 的方式写日志并定期重新组织，从而将写数据的压力平衡到读取的过程中。由于相邻的数据可能落在 Memtable 以及不同的 SST 中，在涉及到范围扫描时，需要对结构化&#x2F;半结构化数据进行排序输出。因此，对于数据块排序过程的优化，也会对读性能产生重要影响。</p>
+<p>文章将基于类LSM引擎，由浅入深地介绍几种相关方案，原文链接：<a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/96374849">知乎·尬聊数据库·浅析数据块排序
+</a></p>
+
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+    <link itemprop="mainEntityOfPage" href="https://solotzg.github.io/2022/03/24/pingcap/tiflash-distributed-storage-and-transaction-system/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Zhigao Tong">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="SOLOTZG">
+      <meta itemprop="description" content="Zhigao Tong's blog">
+    </span>
+    
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="undefined | SOLOTZG">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/2022/03/24/pingcap/tiflash-distributed-storage-and-transaction-system/" class="post-title-link" itemprop="url">The architecture of TiFlash's distributed storage engine and transaction layer</a>
         </h2>
 
         <div class="post-meta-container">
@@ -223,92 +295,12 @@
 <p>这套体系最初是 2018 年底本人加入 PingCAP 后开始设计构建的，于 2020&#x2F;04&#x2F;16 随 TiDB v3.1.0 版本正式 GA，后经多次迭代趋于稳定。</p>
           <!--noindex-->
             <div class="post-button">
-              <a class="btn" href="/2022/03/24/tiflash-distributed-storage-and-transaction-system/#more" rel="contents">
+              <a class="btn" href="/2022/03/24/pingcap/tiflash-distributed-storage-and-transaction-system/#more" rel="contents">
                 Read more &raquo;
               </a>
             </div>
           <!--/noindex-->
         
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://solotzg.github.io/2022/03/23/todo/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Zhigao Tong">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="SOLOTZG">
-      <meta itemprop="description" content="Zhigao Tong's blog">
-    </span>
-    
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content="undefined | SOLOTZG">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2022/03/23/todo/" class="post-title-link" itemprop="url">TODO</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">Posted on</span>
-
-      <time title="Created: 2022-03-23 23:40:33" itemprop="dateCreated datePublished" datetime="2022-03-23T23:40:33+08:00">2022-03-23</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar-check"></i>
-      </span>
-      <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-03-24 00:09:57" itemprop="dateModified" datetime="2022-03-24T00:09:57+08:00">2022-03-24</time>
-    </span>
-
-  
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <h3 id="Step-1"><a href="#Step-1" class="headerlink" title="Step 1"></a>Step 1</h3><ul>
-<li>Add more technical blogs here.</li>
-</ul>
-<h3 id="Step-2"><a href="#Step-2" class="headerlink" title="Step 2"></a>Step 2</h3><h3 id="Step-3"><a href="#Step-3" class="headerlink" title="Step 3"></a>Step 3</h3><h3 id="Test"><a href="#Test" class="headerlink" title="Test"></a>Test</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ <span class="built_in">rm</span> -rf /</span><br></pre></td></tr></table></figure>
-
-
       
     </div>
 
