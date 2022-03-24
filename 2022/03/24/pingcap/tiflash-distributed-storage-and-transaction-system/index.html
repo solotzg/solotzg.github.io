@@ -20,18 +20,18 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"solotzg.github.io","root":"/","images":"/images","scheme":"Mist","darkmode":false,"version":"8.10.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
 
-    <meta name="description" content="Abstract本文原链接 The architecture of TiFlash’s distributed storage engine and transaction layer 作为 TiFlash 分布式存储&amp;事务体系的基本架构。以此留念。 这套体系最初是 2018 年底本人加入 PingCAP 后开始设计构建的，于 2020&#x2F;04&#x2F;16 随 TiDB v3.">
+    <meta name="description" content="本文原链接 The architecture of TiFlash’s distributed storage engine and transaction layer 作为 TiFlash 分布式存储&amp;事务体系的基本架构。以此留念。 这套体系最初是 2018 年底本人加入 PingCAP 后开始设计构建的，于 2020&#x2F;04&#x2F;16 随 TiDB v3.1.0 版本正式">
 <meta property="og:type" content="article">
 <meta property="og:title" content="The architecture of TiFlash&#39;s distributed storage engine and transaction layer">
 <meta property="og:url" content="https://solotzg.github.io/2022/03/24/pingcap/tiflash-distributed-storage-and-transaction-system/index.html">
 <meta property="og:site_name" content="SOLOTZG">
-<meta property="og:description" content="Abstract本文原链接 The architecture of TiFlash’s distributed storage engine and transaction layer 作为 TiFlash 分布式存储&amp;事务体系的基本架构。以此留念。 这套体系最初是 2018 年底本人加入 PingCAP 后开始设计构建的，于 2020&#x2F;04&#x2F;16 随 TiDB v3.">
+<meta property="og:description" content="本文原链接 The architecture of TiFlash’s distributed storage engine and transaction layer 作为 TiFlash 分布式存储&amp;事务体系的基本架构。以此留念。 这套体系最初是 2018 年底本人加入 PingCAP 后开始设计构建的，于 2020&#x2F;04&#x2F;16 随 TiDB v3.1.0 版本正式">
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://solotzg.github.io/images/tiflash-overall.svg">
 <meta property="og:image" content="https://solotzg.github.io/images/tiflash-distributed-architecture.svg">
 <meta property="og:image" content="https://solotzg.github.io/images/txn-log-replication.svg">
 <meta property="article:published_time" content="2022-03-24T02:24:26.000Z">
-<meta property="article:modified_time" content="2022-03-24T03:16:01.994Z">
+<meta property="article:modified_time" content="2022-03-24T09:07:23.111Z">
 <meta property="article:author" content="Zhigao Tong">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://solotzg.github.io/images/tiflash-overall.svg">
@@ -121,7 +121,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
-            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Abstract"><span class="nav-number">1.</span> <span class="nav-text">Abstract</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Introduction"><span class="nav-number">2.</span> <span class="nav-text">Introduction</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Design"><span class="nav-number">3.</span> <span class="nav-text">Design</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Overview"><span class="nav-number">3.1.</span> <span class="nav-text">Overview</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Distributed-Storage-Framework"><span class="nav-number">3.2.</span> <span class="nav-text">Distributed Storage Framework</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Interfaces"><span class="nav-number">3.2.1.</span> <span class="nav-text">Interfaces</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Transaction"><span class="nav-number">3.3.</span> <span class="nav-text">Transaction</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Multi-raft-RSM"><span class="nav-number">3.3.1.</span> <span class="nav-text">Multi-raft RSM</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#Region-Snapshot"><span class="nav-number">3.3.1.1.</span> <span class="nav-text">Region Snapshot</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Learner-Read"><span class="nav-number">3.3.2.</span> <span class="nav-text">Learner Read</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Notice"><span class="nav-number">4.</span> <span class="nav-text">Notice</span></a></li></ol></div>
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Introduction"><span class="nav-number">1.</span> <span class="nav-text">Introduction</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Design"><span class="nav-number">2.</span> <span class="nav-text">Design</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Overview"><span class="nav-number">2.1.</span> <span class="nav-text">Overview</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Distributed-Storage-Framework"><span class="nav-number">2.2.</span> <span class="nav-text">Distributed Storage Framework</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Interfaces"><span class="nav-number">2.2.1.</span> <span class="nav-text">Interfaces</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Transaction"><span class="nav-number">2.3.</span> <span class="nav-text">Transaction</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Multi-raft-RSM"><span class="nav-number">2.3.1.</span> <span class="nav-text">Multi-raft RSM</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#Region-Snapshot"><span class="nav-number">2.3.1.1.</span> <span class="nav-text">Region Snapshot</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Learner-Read"><span class="nav-number">2.3.2.</span> <span class="nav-text">Learner Read</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Notice"><span class="nav-number">3.</span> <span class="nav-text">Notice</span></a></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -136,7 +136,7 @@
   <nav class="site-state">
       <div class="site-state-item site-state-posts">
         <a href="/archives/">
-          <span class="site-state-item-count">3</span>
+          <span class="site-state-item-count">4</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
@@ -214,7 +214,7 @@
       <span class="post-meta-item-text">Posted on</span>
       
 
-      <time title="Created: 2022-03-24 10:24:26 / Modified: 11:16:01" itemprop="dateCreated datePublished" datetime="2022-03-24T10:24:26+08:00">2022-03-24</time>
+      <time title="Created: 2022-03-24 10:24:26 / Modified: 17:07:23" itemprop="dateCreated datePublished" datetime="2022-03-24T10:24:26+08:00">2022-03-24</time>
     </span>
 
   
@@ -227,7 +227,7 @@
     
     
     <div class="post-body" itemprop="articleBody">
-        <h2 id="Abstract"><a href="#Abstract" class="headerlink" title="Abstract"></a>Abstract</h2><p>本文原链接 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/master/docs/design/0000-00-00-architecture-of-distributed-storage-and-transaction.md">The architecture of TiFlash’s distributed storage engine and transaction layer</a> 作为 TiFlash 分布式存储&amp;事务体系的基本架构。以此留念。</p>
+        <p>本文原链接 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/master/docs/design/0000-00-00-architecture-of-distributed-storage-and-transaction.md">The architecture of TiFlash’s distributed storage engine and transaction layer</a> 作为 TiFlash 分布式存储&amp;事务体系的基本架构。以此留念。</p>
 <p>这套体系最初是 2018 年底本人加入 PingCAP 后开始设计构建的，于 2020&#x2F;04&#x2F;16 随 TiDB v3.1.0 版本正式 GA，后经多次迭代趋于稳定。</p>
 <span id="more"></span>
 

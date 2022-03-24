@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.1.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css" integrity="sha256-jTIdiMuX/e3DGJUGwl3pKSxuc6YOuqtJYkM0bGQESA4=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/animate.css@3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"solotzg.github.io","root":"/","images":"/images","scheme":"Mist","darkmode":false,"version":"8.10.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="Release Notes 作为开源软件工程实践的重要一环，会很大程度上影响用户体验和交付流程。此篇文档是本人在历次发版任务中总结出来的模板规范，用以帮助产研提升 Release Notes 质量。该规范已由组内推广至 PingCAP 全公司。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Release Notes Specification">
+<meta property="og:url" content="https://solotzg.github.io/2022/03/24/ProjectManagement/release-notes-specification/index.html">
+<meta property="og:site_name" content="SOLOTZG">
+<meta property="og:description" content="Release Notes 作为开源软件工程实践的重要一环，会很大程度上影响用户体验和交付流程。此篇文档是本人在历次发版任务中总结出来的模板规范，用以帮助产研提升 Release Notes 质量。该规范已由组内推广至 PingCAP 全公司。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2022-03-24T08:41:09.000Z">
+<meta property="article:modified_time" content="2022-03-24T09:07:45.828Z">
+<meta property="article:author" content="Zhigao Tong">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://solotzg.github.io/2022/03/24/ProjectManagement/release-notes-specification/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://solotzg.github.io/2022/03/24/ProjectManagement/release-notes-specification/","path":"2022/03/24/ProjectManagement/release-notes-specification/","title":"Release Notes Specification"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Release Notes Specification | SOLOTZG</title>
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">SOLOTZG</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu">
+        <li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a></li>
+        <li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a></li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%9B%B8%E5%85%B3%E6%96%87%E6%A1%A3"><span class="nav-number">1.</span> <span class="nav-text">相关文档</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E6%A8%A1%E6%9D%BF"><span class="nav-number">2.</span> <span class="nav-text">参考模板</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9F%BA%E6%9C%AC%E8%A6%81%E6%B1%82"><span class="nav-number">2.1.</span> <span class="nav-text">基本要求</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Compatibility-changes"><span class="nav-number">2.2.</span> <span class="nav-text">Compatibility changes</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Feature-enhancements"><span class="nav-number">2.3.</span> <span class="nav-text">Feature enhancements</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Bug-fixes"><span class="nav-number">2.4.</span> <span class="nav-text">Bug fixes</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BF%AE%E6%94%B9%E6%A0%B7%E4%BE%8B"><span class="nav-number">3.</span> <span class="nav-text">修改样例</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Compatibility-changes-1"><span class="nav-number">3.1.</span> <span class="nav-text">Compatibility changes</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Feature-enhancements-1"><span class="nav-number">3.2.</span> <span class="nav-text">Feature enhancements</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Bug-fixes-1"><span class="nav-number">3.3.</span> <span class="nav-text">Bug fixes</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Zhigao Tong"
+      src="/images/avatar.gif">
+  <p class="site-author-name" itemprop="name">Zhigao Tong</p>
+  <div class="site-description" itemprop="description">Zhigao Tong's blog</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">4</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author site-overview-item animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/solotzg" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;solotzg" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:solotzg@gmail.com" title="E-Mail → mailto:solotzg@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://solotzg.github.io/2022/03/24/ProjectManagement/release-notes-specification/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Zhigao Tong">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="SOLOTZG">
+      <meta itemprop="description" content="Zhigao Tong's blog">
+    </span>
+    
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Release Notes Specification | SOLOTZG">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Release Notes Specification
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+      
+
+      <time title="Created: 2022-03-24 16:41:09 / Modified: 17:07:45" itemprop="dateCreated datePublished" datetime="2022-03-24T16:41:09+08:00">2022-03-24</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p><code>Release Notes</code> 作为开源软件工程实践的重要一环，会很大程度上影响用户体验和交付流程。此篇文档是本人在历次发版任务中总结出来的模板规范，用以帮助产研提升 Release Notes 质量。该规范已由组内推广至 PingCAP 全公司。</p>
+<span id="more"></span>
+
+<blockquote>
+<p>Proposed by <code>Zhigao Tong</code></p>
+</blockquote>
+<h2 id="相关文档"><a href="#相关文档" class="headerlink" title="相关文档"></a>相关文档</h2><ul>
+<li>Release Notes 填写规范</li>
+<li>Release Notes 描述规范</li>
+<li>Development-Documentation Release Notes 加工</li>
+<li>官方发布：<a target="_blank" rel="noopener" href="https://docs.pingcap.com/tidb/dev/release-notes">Release Notes | PingCAP Docs</a></li>
+</ul>
+<h2 id="参考模板"><a href="#参考模板" class="headerlink" title="参考模板"></a>参考模板</h2><p><strong>注意：以下模板和规范仅限 PR&#x2F;ISSUE 粒度，跨大版本发布时所需的详细 release notes 不在本文讨论范围</strong></p>
+<h3 id="基本要求"><a href="#基本要求" class="headerlink" title="基本要求"></a>基本要求</h3><ul>
+<li>句首字母大写</li>
+<li>结尾不出现标点符号</li>
+<li>语法正确</li>
+<li>祈使句</li>
+<li>用户视角<ul>
+<li>Release Notes 的写作参考 PR 对应的 GitHub issue。GitHub issue 是用户侧最直接感知的问题，Release Notes 应就用户侧直接感知的问题进行简要概述，而非对代码侧进行概述。PR 中的提供的 Release Notes 应与 GitHub issue 标题和描述高度一致，避免割裂</li>
+<li>不描述具体修改细节，以概述为主</li>
+<li>对于 Bug fix notes，强调该条改动对用户的意义，帮助用户解决了什么问题</li>
+<li>在编写 Improvements 或 Feature enhancements 部分的 note 时，还需要写出改动为用户带来的好处，或是提升性能，或是增强稳定性，或是更丰富的功能体验</li>
+<li>在编写 Bug fix 部分的 note 时，需要写清楚问题触发的条件和问题带来的影响，最好还能写出用户的 workaround</li>
+</ul>
+</li>
+<li>表述完整 &amp; 简洁</li>
+<li>变量参数名、配置项名、值、SQL 语句、命令、列类型等用 &#96;&#96; 反引号包括。如果需要表示字符串，也可使用引号 “ 或 ‘ </li>
+<li>闭源 Repo 结尾不要附 PR 链接</li>
+<li>SQL 表达式等相关专用单词全字母大写，例如：COUNT DISTINCT；HAVING；STR_TO_DATE；</li>
+</ul>
+<p><strong>PR Reviewer</strong> 以及 <strong>PM</strong> 需按照上述原则审核用于对外发布的 Release Notes</p>
+<ul>
+<li>由 PR reviewer 审查日常提交的每个 PR 的 release notes、labels</li>
+<li>PM 需要在发版前，针对 Bug Triage List 中相关 issue 或 PR 再次审核</li>
+</ul>
+<p>对于不合规范或有问题的条目需要公布并集体讨论</p>
+<p>对于文档组有修改意见的条目需要公布并集体讨论</p>
+<p>如果有新的格式可用于规范模板，请及时补充到本文档中</p>
+<p><strong>以下为根据历史发版记录总结的部分模板，建议填写 Release Notes 时参考</strong></p>
+<h3 id="Compatibility-changes"><a href="#Compatibility-changes" class="headerlink" title="Compatibility changes"></a>Compatibility changes</h3><p>这一部分涵盖了此发版相较于上一发版，所涉及的配置项变更、默认值变更以及所有产生兼容性问题的变更。相对于其他 note，这一部分更容易对线上业务造成影响，是用户需要重点关注的。也是 Release Notes 的重点之一。</p>
+<p>Compatibility changes 的 note 需要说明两个信息：</p>
+<ul>
+<li>此前的代码行为、配置项、默认值是什么</li>
+<li>从此版本起，新的代码行为、新的配置项、新的默认值是什么</li>
+</ul>
+<h3 id="Feature-enhancements"><a href="#Feature-enhancements" class="headerlink" title="Feature enhancements"></a>Feature enhancements</h3><p>提升改进或功能增强的 note，开头的动词多为 Support 和 Add</p>
+<p>支持&#x2F;实现 具体功能</p>
+<ul>
+<li><strong>Support [doing something]</strong></li>
+<li><strong>Support the […]</strong></li>
+<li><strong>Add […]</strong></li>
+<li>例如：<ul>
+<li>Support casting the <code>STRING</code> type to the <code>DOUBLE</code> type</li>
+<li>Support the <code>Cartesian</code> join</li>
+</ul>
+</li>
+<li>支持函数下推<ul>
+<li><strong>Support the <code>XXX()</code> function</strong></li>
+<li>函数名称全字母大写，最后加上 ()</li>
+<li>例如：<ul>
+<li>Support the <code>DATE()</code> function</li>
+<li>Support the <code>STR_TO_DATE()</code> function</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>优化功能</p>
+<ul>
+<li><strong>Optimize the […]</strong></li>
+<li>例如：<ul>
+<li>Optimize the non-joined data in right outer join using multiple threads</li>
+</ul>
+</li>
+</ul>
+<h3 id="Bug-fixes"><a href="#Bug-fixes" class="headerlink" title="Bug fixes"></a>Bug fixes</h3><p>开头使用 <strong>Fix a […] bug that […]</strong> | <strong>Fix the […] issue&#x2F;error&#x2F;exception that&#x2F;of […]</strong></p>
+<p>不建议使用 may | might 等不确定性字样，可使用 a&#x2F;the potential […] bug&#x2F;issue，样例：</p>
+<ul>
+<li>Fix the issue that TiFlash keeps restarting because of …</li>
+<li>Fix the potential issue that TiFlash cannot …</li>
+<li>Fix a bug that TiFlash fails to …</li>
+</ul>
+<p>错误&#x2F;异常相关问题模板</p>
+<ul>
+<li>Fix the issue of incorrect results that occurs when&#x2F;during …</li>
+<li>Fix the issue of wrong query results that occurs when …</li>
+<li>Fix the issue of unexpected results that occurs …</li>
+<li>Fix the TiFlash panic issue that occurs when …</li>
+<li>Fix the potential&#x2F;occasional panic that occurs when …</li>
+</ul>
+<h2 id="修改样例"><a href="#修改样例" class="headerlink" title="修改样例"></a>修改样例</h2><h3 id="Compatibility-changes-1"><a href="#Compatibility-changes-1" class="headerlink" title="Compatibility changes"></a>Compatibility changes</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">copr: cast invalid utf8 string to real bug fix</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>描述过于简略，表意不完整</li>
+<li>该改动涉及用户可感知的代码行为改动，会造成兼容性变化，但是未在 release notes 中体现出来</li>
+</ul>
+<p><strong>修改意见</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Before v4.0.16, when TiDB converts an illegal UTF-8 string to a Real type, an error is reported directly. Starting from v4.0.16, TiDB processes the conversion according to the legal UTF-8 prefix in the string</span><br></pre></td></tr></table></figure>
+
+<hr>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sink: fix kafka max message size inaccurate issue.</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>描述过于简略，表意不完整</li>
+<li>该改动修改了参数默认值，造成兼容性更改，但是未在 release notes 中体现出来</li>
+</ul>
+<p><strong>修改意见</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Change the default value of Kafka Sink max-message-bytes to 1 MB to prevent TiCDC from sending too large messages to Kafka clusters</span><br></pre></td></tr></table></figure>
+
+<hr>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cdc/sink: adjust kafka initialization logic</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>描述过于简略，表意不完整</li>
+<li>该改动修改了参数默认值，造成兼容性更改，但是未在 release notes 中体现出来</li>
+</ul>
+<p><strong>修改意见</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Change the default value of Kafka Sink partition-num to 3 so that TiCDC distributes messages across Kafka partitions more evenly</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h3 id="Feature-enhancements-1"><a href="#Feature-enhancements-1" class="headerlink" title="Feature enhancements"></a>Feature enhancements</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Not use the stale read request&#x27;s `start_ts` to update `max_ts` to avoid commit request keep retrying</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>该优化的目的和结果是避免 commit 请求重试，方式为不使用 Stale Read 请求的 start_ts 更新 max_ts。应先说目的和结果</li>
+</ul>
+<p><strong>修改意见</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Avoid excessive commit request retrying by not using the Stale Read request&#x27;s start_ts to update max_ts</span><br></pre></td></tr></table></figure>
+
+<h3 id="Bug-fixes-1"><a href="#Bug-fixes-1" class="headerlink" title="Bug fixes"></a>Bug fixes</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">fix potential npe in executeTS during DAG compile</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>首字母非大写</li>
+<li>executeTS 具体含义指代不清</li>
+<li>npe 具体含义指代不清</li>
+<li>缺乏概述</li>
+</ul>
+<p><strong>修改意见</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Fix the potential panic issue that occurs when running table scan tasks</span><br></pre></td></tr></table></figure>
+
+<p>或</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Fix the null pointer exception (NPE) that occurs when running table scan tasks</span><br></pre></td></tr></table></figure>
+
+<hr>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Fix Cannot convert NULL value to non-Nullable type error for scalar aggregation with aggregation function count and count distinct</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>语法不清</li>
+<li>格式较乱</li>
+<li>描述过多细节，缺乏概述</li>
+<li>count 和 count distinct 相关 SQL 专用词需要全字母大写。并加上 &#96;&#96;</li>
+</ul>
+<p><strong>修改意见</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Fix the issue of unexpected results when executing the aggregation functions `COUNT` or `COUNT DISTINCT`</span><br></pre></td></tr></table></figure>
+
+<hr>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">fix mpp random crash if mpp query meet errors</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>首字母非大写</li>
+<li>mpp 指代不清（是否专用词？）</li>
+<li>格式不清晰</li>
+</ul>
+<p><strong>修改意见</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Fix the potential crash issue that occurs when executing `MPP` tasks</span><br></pre></td></tr></table></figure>
+
+<hr>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">support having in DAG request</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>首字母非大写</li>
+<li>having 相关 SQL 专用词格式有误</li>
+<li>request 语法错误</li>
+</ul>
+<p><strong>修改意见</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Support the `HAVING()` function in DAG requests</span><br></pre></td></tr></table></figure>
+
+<hr>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Fix TiFlash server random crash when deconstruct SharedQueryBlockInputStream</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>语法&#x2F;格式有误</li>
+</ul>
+<p><strong>修改意见</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Fix the potential crash issue that occurs when deconstructing `SharedQueryBlockInputStream`</span><br></pre></td></tr></table></figure>
+
+<hr>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">fix random terminate without exception error when deconstruct MPPTask</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>语法&#x2F;格式有误</li>
+<li>MPPTask 是否专用词</li>
+<li>需精简概述</li>
+</ul>
+<p><strong>修改意见</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Fix the potential panic issue that occurs when deconstructing `MPPTask`</span><br></pre></td></tr></table></figure>
+
+<hr>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">retry when meeting stablish conn fails</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>首字母非大写</li>
+<li>语法&#x2F;格式混乱</li>
+<li>表述不清且完整性较差</li>
+</ul>
+<p><strong>修改意见</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Fix the issue of unexpected results when TiFlash failed to establish `MPP` connections</span><br></pre></td></tr></table></figure>
+
+<hr>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">fix resolve lock race</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>所有问题同上</li>
+</ul>
+<p><strong>修改意见</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Fix the potential panic issue that occurs when resolving locks</span><br></pre></td></tr></table></figure>
+
+<hr>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Fix problem CastStringAsInt may produce wrong result</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>使用内部函数名词，可读性较差</li>
+<li>语法&#x2F;格式有误</li>
+<li>不需要使用 may 这类不确定性词句</li>
+</ul>
+<p><strong>修改意见</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Fix the issue of incorrect results when casting string as integer</span><br></pre></td></tr></table></figure>
+
+<hr>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Fix a string compare bug that sometimes &gt;= and &lt;= will return wrong result if the contains with `\0`</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>语法&#x2F;格式有误</li>
+<li>描述过多细节，缺乏概述</li>
+<li>直接使用 <code>\0</code> 对外部表意不清</li>
+</ul>
+<p><strong>修改意见</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Fix the issue of incorrect results when comparing a string that contains zero bytes</span><br></pre></td></tr></table></figure>
+
+<hr>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">lock_resolver: avoid pessimistic transactions using resolveLocksForWrite</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>没有从用户视角出发，未说明解决了什么问题，与 GitHub issue 不一致</li>
+<li>描述偏重代码侧细节，缺乏概述，例如 resolveLocksForWrite</li>
+<li>未以 Fix the issue 开头，不是标准的 bug fix note</li>
+</ul>
+<p><strong>修改意见</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Fix the issue that committing pessimistic transactions might cause write conflict</span><br></pre></td></tr></table></figure>
+<hr>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2022/03/24/pingcap/date-block-sort/" rel="prev" title="浅析数据块排序">
+                  <i class="fa fa-chevron-left"></i> 浅析数据块排序
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Zhigao Tong</span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/schemes/muse.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>
