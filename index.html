@@ -142,7 +142,7 @@
       </div>
       <div class="site-state-item site-state-tags">
           <a href="/tags/">
-        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-count">15</span>
         <span class="site-state-item-name">tags</span></a>
       </div>
   </nav>
@@ -280,7 +280,7 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://solotzg.github.io/2022/03/24/pingcap/date-block-sort/">
+    <link itemprop="mainEntityOfPage" href="https://solotzg.github.io/2022/03/24/pingcap/tiflash-distributed-storage-and-transaction-system/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -298,7 +298,7 @@
     </span>
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
-          <a href="/2022/03/24/pingcap/date-block-sort/" class="post-title-link" itemprop="url">浅析数据块排序</a>
+          <a href="/2022/03/24/pingcap/tiflash-distributed-storage-and-transaction-system/" class="post-title-link" itemprop="url">TiFlash 分布式存储 & 事务体系架构</a>
         </h2>
 
         <div class="post-meta-container">
@@ -309,14 +309,107 @@
       </span>
       <span class="post-meta-item-text">Posted on</span>
 
-      <time title="Created: 2022-03-24 14:57:35" itemprop="dateCreated datePublished" datetime="2022-03-24T14:57:35+08:00">2022-03-24</time>
+      <time title="Created: 2022-03-24 10:24:26" itemprop="dateCreated datePublished" datetime="2022-03-24T10:24:26+08:00">2022-03-24</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-03-26 00:17:46" itemprop="dateModified" datetime="2022-03-26T00:17:46+08:00">2022-03-26</time>
+      <time title="Modified: 2022-03-26 10:31:29" itemprop="dateModified" datetime="2022-03-26T10:31:29+08:00">2022-03-26</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/PingCAP/" itemprop="url" rel="index"><span itemprop="name">PingCAP</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <p>本文原链接 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/master/docs/design/0000-00-00-architecture-of-distributed-storage-and-transaction.md">The architecture of TiFlash’s distributed storage engine and transaction layer</a> 作为 TiFlash 分布式存储&amp;事务体系的基本架构。以此留念。</p>
+<p>这套体系最初是 2018 年底本人加入 PingCAP 后开始设计构建的，于 2020-04-16 随 TiDB v3.1.0 版本正式 GA，后经多次迭代趋于稳定。</p>
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2022/03/24/pingcap/tiflash-distributed-storage-and-transaction-system/#more" rel="contents">
+                Read more &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+    <link itemprop="mainEntityOfPage" href="https://solotzg.github.io/2019/12/18/pingcap/date-block-sort/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Zhigao Tong">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="SOLOTZG">
+      <meta itemprop="description" content="Zhigao Tong's blog">
+    </span>
+    
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="undefined | SOLOTZG">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/2019/12/18/pingcap/date-block-sort/" class="post-title-link" itemprop="url">浅析数据块排序</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+
+      <time title="Created: 2019-12-18 16:22:08" itemprop="dateCreated datePublished" datetime="2019-12-18T16:22:08+08:00">2019-12-18</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">Edited on</span>
+      <time title="Modified: 2022-03-26 10:33:45" itemprop="dateModified" datetime="2022-03-26T10:33:45+08:00">2022-03-26</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -367,7 +460,7 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://solotzg.github.io/2022/03/24/pingcap/tiflash-distributed-storage-and-transaction-system/">
+    <link itemprop="mainEntityOfPage" href="https://solotzg.github.io/2018/12/22/history-blog/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="image" content="/images/avatar.gif">
@@ -385,7 +478,7 @@
     </span>
       <header class="post-header">
         <h2 class="post-title" itemprop="name headline">
-          <a href="/2022/03/24/pingcap/tiflash-distributed-storage-and-transaction-system/" class="post-title-link" itemprop="url">The architecture of TiFlash's distributed storage engine and transaction layer</a>
+          <a href="/2018/12/22/history-blog/" class="post-title-link" itemprop="url">History Blogs</a>
         </h2>
 
         <div class="post-meta-container">
@@ -396,107 +489,14 @@
       </span>
       <span class="post-meta-item-text">Posted on</span>
 
-      <time title="Created: 2022-03-24 10:24:26" itemprop="dateCreated datePublished" datetime="2022-03-24T10:24:26+08:00">2022-03-24</time>
+      <time title="Created: 2018-12-22 10:24:26" itemprop="dateCreated datePublished" datetime="2018-12-22T10:24:26+08:00">2018-12-22</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-03-26 00:22:16" itemprop="dateModified" datetime="2022-03-26T00:22:16+08:00">2022-03-26</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-folder"></i>
-      </span>
-      <span class="post-meta-item-text">In</span>
-        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-          <a href="/categories/PingCAP/" itemprop="url" rel="index"><span itemprop="name">PingCAP</span></a>
-        </span>
-    </span>
-
-  
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <p>本文原链接 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/master/docs/design/0000-00-00-architecture-of-distributed-storage-and-transaction.md">The architecture of TiFlash’s distributed storage engine and transaction layer</a> 作为 TiFlash 分布式存储&amp;事务体系的基本架构。以此留念。</p>
-<p>这套体系最初是 2018 年底本人加入 PingCAP 后开始设计构建的，于 2020&#x2F;04&#x2F;16 随 TiDB v3.1.0 版本正式 GA，后经多次迭代趋于稳定。</p>
-          <!--noindex-->
-            <div class="post-button">
-              <a class="btn" href="/2022/03/24/pingcap/tiflash-distributed-storage-and-transaction-system/#more" rel="contents">
-                Read more &raquo;
-              </a>
-            </div>
-          <!--/noindex-->
-        
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://solotzg.github.io/2022/03/23/history-blog/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Zhigao Tong">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="SOLOTZG">
-      <meta itemprop="description" content="Zhigao Tong's blog">
-    </span>
-    
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content="undefined | SOLOTZG">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2022/03/23/history-blog/" class="post-title-link" itemprop="url">History Blog</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">Posted on</span>
-
-      <time title="Created: 2022-03-23 16:57:31" itemprop="dateCreated datePublished" datetime="2022-03-23T16:57:31+08:00">2022-03-23</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar-check"></i>
-      </span>
-      <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-03-26 00:16:28" itemprop="dateModified" datetime="2022-03-26T00:16:28+08:00">2022-03-26</time>
+      <time title="Modified: 2022-03-26 10:35:17" itemprop="dateModified" datetime="2022-03-26T10:35:17+08:00">2022-03-26</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -528,7 +528,7 @@
 <li><a target="_blank" rel="noopener" href="https://blog.csdn.net/solotzg/article/details/80573012">原创：  PaxosCommit TLA+形式化验证</a>
           <!--noindex-->
             <div class="post-button">
-              <a class="btn" href="/2022/03/23/history-blog/#more" rel="contents">
+              <a class="btn" href="/2018/12/22/history-blog/#more" rel="contents">
                 Read more &raquo;
               </a>
             </div>

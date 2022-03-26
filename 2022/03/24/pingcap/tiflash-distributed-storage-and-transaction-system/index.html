@@ -20,24 +20,25 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"solotzg.github.io","root":"/","images":"/images","scheme":"Mist","darkmode":false,"version":"8.10.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
 
-    <meta name="description" content="本文原链接 The architecture of TiFlash’s distributed storage engine and transaction layer 作为 TiFlash 分布式存储&amp;事务体系的基本架构。以此留念。 这套体系最初是 2018 年底本人加入 PingCAP 后开始设计构建的，于 2020&#x2F;04&#x2F;16 随 TiDB v3.1.0 版本正式">
+    <meta name="description" content="本文原链接 The architecture of TiFlash’s distributed storage engine and transaction layer 作为 TiFlash 分布式存储&amp;事务体系的基本架构。以此留念。 这套体系最初是 2018 年底本人加入 PingCAP 后开始设计构建的，于 2020-04-16 随 TiDB v3.1.0 版本正式 GA，后经多次迭代">
 <meta property="og:type" content="article">
-<meta property="og:title" content="The architecture of TiFlash&#39;s distributed storage engine and transaction layer">
+<meta property="og:title" content="TiFlash 分布式存储 &amp; 事务体系架构">
 <meta property="og:url" content="https://solotzg.github.io/2022/03/24/pingcap/tiflash-distributed-storage-and-transaction-system/index.html">
 <meta property="og:site_name" content="SOLOTZG">
-<meta property="og:description" content="本文原链接 The architecture of TiFlash’s distributed storage engine and transaction layer 作为 TiFlash 分布式存储&amp;事务体系的基本架构。以此留念。 这套体系最初是 2018 年底本人加入 PingCAP 后开始设计构建的，于 2020&#x2F;04&#x2F;16 随 TiDB v3.1.0 版本正式">
+<meta property="og:description" content="本文原链接 The architecture of TiFlash’s distributed storage engine and transaction layer 作为 TiFlash 分布式存储&amp;事务体系的基本架构。以此留念。 这套体系最初是 2018 年底本人加入 PingCAP 后开始设计构建的，于 2020-04-16 随 TiDB v3.1.0 版本正式 GA，后经多次迭代">
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://solotzg.github.io/images/tiflash-overall.svg">
 <meta property="og:image" content="https://solotzg.github.io/images/tiflash-distributed-architecture.svg">
 <meta property="og:image" content="https://solotzg.github.io/images/txn-log-replication.svg">
 <meta property="article:published_time" content="2022-03-24T02:24:26.000Z">
-<meta property="article:modified_time" content="2022-03-25T16:22:16.623Z">
+<meta property="article:modified_time" content="2022-03-26T02:31:29.794Z">
 <meta property="article:author" content="Zhigao Tong">
 <meta property="article:tag" content="DistributedSystem">
 <meta property="article:tag" content="Storage">
 <meta property="article:tag" content="PingCAP">
 <meta property="article:tag" content="TiFlash">
 <meta property="article:tag" content="Transaction">
+<meta property="article:tag" content="HTAP">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://solotzg.github.io/images/tiflash-overall.svg">
 
@@ -46,10 +47,10 @@
 
 
 
-<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://solotzg.github.io/2022/03/24/pingcap/tiflash-distributed-storage-and-transaction-system/","path":"2022/03/24/pingcap/tiflash-distributed-storage-and-transaction-system/","title":"The architecture of TiFlash's distributed storage engine and transaction layer"}</script>
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://solotzg.github.io/2022/03/24/pingcap/tiflash-distributed-storage-and-transaction-system/","path":"2022/03/24/pingcap/tiflash-distributed-storage-and-transaction-system/","title":"TiFlash 分布式存储 & 事务体系架构"}</script>
 
 <script class="next-config" data-name="calendar" type="application/json">""</script>
-<title>The architecture of TiFlash's distributed storage engine and transaction layer | SOLOTZG</title>
+<title>TiFlash 分布式存储 & 事务体系架构 | SOLOTZG</title>
   
 
 
@@ -154,7 +155,7 @@
       </div>
       <div class="site-state-item site-state-tags">
           <a href="/tags/">
-        <span class="site-state-item-count">14</span>
+        <span class="site-state-item-count">15</span>
         <span class="site-state-item-name">tags</span></a>
       </div>
   </nav>
@@ -214,12 +215,12 @@
     </span>
     
     <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content="The architecture of TiFlash's distributed storage engine and transaction layer | SOLOTZG">
+      <meta itemprop="name" content="TiFlash 分布式存储 & 事务体系架构 | SOLOTZG">
       <meta itemprop="description" content="">
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          The architecture of TiFlash's distributed storage engine and transaction layer
+          TiFlash 分布式存储 & 事务体系架构
         </h1>
 
         <div class="post-meta-container">
@@ -237,7 +238,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-03-26 00:22:16" itemprop="dateModified" datetime="2022-03-26T00:22:16+08:00">2022-03-26</time>
+      <time title="Modified: 2022-03-26 10:31:29" itemprop="dateModified" datetime="2022-03-26T10:31:29+08:00">2022-03-26</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -260,7 +261,7 @@
     
     <div class="post-body" itemprop="articleBody">
         <p>本文原链接 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/master/docs/design/0000-00-00-architecture-of-distributed-storage-and-transaction.md">The architecture of TiFlash’s distributed storage engine and transaction layer</a> 作为 TiFlash 分布式存储&amp;事务体系的基本架构。以此留念。</p>
-<p>这套体系最初是 2018 年底本人加入 PingCAP 后开始设计构建的，于 2020&#x2F;04&#x2F;16 随 TiDB v3.1.0 版本正式 GA，后经多次迭代趋于稳定。</p>
+<p>这套体系最初是 2018 年底本人加入 PingCAP 后开始设计构建的，于 2020-04-16 随 TiDB v3.1.0 版本正式 GA，后经多次迭代趋于稳定。</p>
 <span id="more"></span>
 
 <h2 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h2><p>There is already a distributed <code>OLTP</code>(Online transaction processing) storage product <a target="_blank" rel="noopener" href="https://github.com/tikv/tikv">TiKV</a>.<br>To make TiDB applicable to the <code>HTAP</code>(Hybrid transaction&#x2F;analytical processing) scenario, we need a specialized analytical engine called <code>TiFlash</code>, to enhance the ability of real-time analytics.<br>Unlike other typical <code>OLAP</code>(Online analytical processing) databases which only guarantee <code>Eventual Consistency</code>, TiFlash is built on the same distributed infrastructure(<code>Multi-raft RSM</code>, <code>Percolator Transaction Model</code>) like TiKV.<br>TiFlash is designed to provide <code>Strong Consistency</code> read services.<br>It means any other component, like TiDB or TiSpark, can access TiFlash and TiKV by the same protocol, which ensures consistency is snapshot read.</p>
@@ -385,19 +386,20 @@
               <a href="/tags/PingCAP/" rel="tag"># PingCAP</a>
               <a href="/tags/TiFlash/" rel="tag"># TiFlash</a>
               <a href="/tags/Transaction/" rel="tag"># Transaction</a>
+              <a href="/tags/HTAP/" rel="tag"># HTAP</a>
           </div>
 
         
 
           <div class="post-nav">
             <div class="post-nav-item">
-                <a href="/2022/03/23/history-blog/" rel="prev" title="History Blog">
-                  <i class="fa fa-chevron-left"></i> History Blog
+                <a href="/2019/12/18/pingcap/date-block-sort/" rel="prev" title="浅析数据块排序">
+                  <i class="fa fa-chevron-left"></i> 浅析数据块排序
                 </a>
             </div>
             <div class="post-nav-item">
-                <a href="/2022/03/24/pingcap/date-block-sort/" rel="next" title="浅析数据块排序">
-                  浅析数据块排序 <i class="fa fa-chevron-right"></i>
+                <a href="/2022/03/24/ProjectManagement/release-notes-specification/" rel="next" title="Release Notes Specification">
+                  Release Notes Specification <i class="fa fa-chevron-right"></i>
                 </a>
             </div>
           </div>
