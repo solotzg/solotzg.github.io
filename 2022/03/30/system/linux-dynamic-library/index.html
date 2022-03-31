@@ -28,7 +28,7 @@
 <meta property="og:description" content="PingCAP（aka 贵司）自研了套部署工具 TiUP 来取代早前使用的重型部署工具 Ansible。实际使用过程中，有多次出现在打 patch 滚动重启过程中，TiFlash 节点行为不符合预期。后来发现，TiUP 打 patch 过程中，没有停进程且是直接 tar 命令解压覆盖部署目录，最基本的原子性保障更是无从谈起。 v6.0 版本前 TiFlash 的部分模块包含动态加载共享库（aka">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2022-03-30T08:04:36.000Z">
-<meta property="article:modified_time" content="2022-03-31T04:03:24.353Z">
+<meta property="article:modified_time" content="2022-03-31T10:33:02.783Z">
 <meta property="article:author" content="Zhigao Tong">
 <meta property="article:tag" content="PingCAP">
 <meta property="article:tag" content="Linux">
@@ -233,7 +233,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-03-31 12:03:24" itemprop="dateModified" datetime="2022-03-31T12:03:24+08:00">2022-03-31</time>
+      <time title="Modified: 2022-03-31 18:33:02" itemprop="dateModified" datetime="2022-03-31T18:33:02+08:00">2022-03-31</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -304,7 +304,7 @@
 <p>追踪 <code>tar</code> 命令的执行过程，可以看到当目标文件已存在时，是 unlink 删除后再新建并复制写入。所以通过 tar 命令覆盖正在被使用的文件也是安全的。</p>
 <hr>
 <p>当程序正在运行时，调用 <code>cp</code> 尝试覆盖其二进制文件，会报错 <code>Text file busy</code>。如果使用 <code>cp -f</code> 则会忽略报错，并执行 unlink 后再复制，<strong>此时 Inode 已经发生改变</strong>。</p>
-<h1 id="Linux-动态库"><a href="#Linux-动态库" class="headerlink" title="Linux 动态库"></a>Linux 动态库</h1><p>部分基本概念可参考 <a target="_blank" rel="noopener" href="https://blog.csdn.net/nkguohao/article/details/48679235">linux下静态库、动态库总结</a>。</p>
+<h1 id="Linux-动态库"><a href="#Linux-动态库" class="headerlink" title="Linux 动态库"></a>Linux 动态库</h1><p>部分基本概念可参考 <a target="_blank" rel="noopener" href="https://blog.csdn.net/nkguohao/article/details/48679235">linux下静态库、动态库总结</a>。强烈推荐 <a target="_blank" rel="noopener" href="https://book.douban.com/subject/3652388/">《程序员的自我修养——链接装载与库》</a> 这本书，细致全面地囊括了各项相关知识。</p>
 <p>Linux 下的库有两种：<code>静态库</code> 和 <code>共享库</code></p>
 <ul>
 <li>静态用 <code>.a</code> 为后缀。静态库的代码在编译过程中已经被载入可执行程序，因此生成的可执行程序体积较大。</li>
@@ -353,7 +353,7 @@
 <li>编译目标代码时指定的动态库搜索路径</li>
 <li>环境变量 <code>LD_LIBRARY_PATH</code> 指定动态库搜索路径</li>
 <li>配置文件 <code>/etc/ld.so.conf</code> 中指定的动态库搜索路径</li>
-<li>默认的动态库搜索路径：<code>/lib</code>、<code>/usr/lib</code> 等</li>
+<li>默认的动态库搜索路径：<code>/lib</code>、<code>/usr/lib</code>、<code>/usr/local/lib</code></li>
 </ol>
 <hr>
 <p>当程序链接多个包含相同函数的库时，会出现非预期的结果，例子如下：</p>
@@ -371,7 +371,7 @@
 
 <hr>
 <p><strong>问题分析</strong></p>
-<p>静态链接的过程主要包括：地址和空间分配（Address and Storage Allocation）、符号决议（Symbol Resolution，aka 符号绑定）、重定位（Relocation）等。建议参考 <a target="_blank" rel="noopener" href="https://book.douban.com/subject/3652388/">《程序员的自我修养》</a> 这本书。</p>
+<p>静态链接的过程主要包括：地址和空间分配（Address and Storage Allocation）、符号决议（Symbol Resolution，aka 符号绑定）、重定位（Relocation）等。</p>
 <p>上述例子使用动态库的方式为<code>隐式加载</code>（载入时加载）</p>
 <ul>
 <li>类似静态库链接的过程发生在程序加载时，动态链接器将所有相关动态库装载到进程地址空间，将程序中未定义的符号绑定到相应的动态链接库，进行重定位工作。<ul>
@@ -390,12 +390,17 @@
 
 <p>程序运行时，在逻辑中加载 libtest.so 获取 test 函数入口。编译时则不需要链接项 -ltest。</p>
 <figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">clang++ main2.cpp -L./ -lv2 -ldl -o main2 &amp;&amp; ./main2</span><br><span class="line">2,1</span><br><span class="line">clang++ main2.cpp -L./ -lv1 -ldl -o main2 &amp;&amp; ./main2</span><br><span class="line">1,1</span><br></pre></td></tr></table></figure>
-
+<hr>
+<p>当进程中的模块是通过 <code>dlopen()</code> 载入的共享对象，<code>dlsym()</code> 查找符号的优先级分为 2 种：</p>
+<ul>
+<li>dlopen() 参数 <code>filename</code> 为 nullptr， 则是从全局符号表查找，即 <code>装载序列（Load Ordering）</code>。</li>
+<li>dlopen() 指定共享对象时，则采用 <code>依赖序列（Dependency Ordering）</code> 的优先级：以被 dlopen() 打开的共享对象为节点，对其依赖对象进行广度优先遍历，直到找到符号。</li>
+</ul>
 <h4 id="符号隐藏"><a href="#符号隐藏" class="headerlink" title="符号隐藏"></a>符号隐藏</h4><p>隐藏 main 入口 foo 函数</p>
 <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// main3.cpp</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;iostream&gt;</span></span></span><br><span class="line">__attribute__ ((<span class="built_in">visibility</span> (<span class="string">&quot;hidden&quot;</span>))) <span class="function"><span class="type">int</span> <span class="title">foo</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">test</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;std::cout&lt;&lt;<span class="built_in">foo</span>()&lt;&lt;<span class="string">&quot;,&quot;</span>&lt;&lt;<span class="built_in">test</span>()&lt;&lt;std::endl;&#125;</span><br></pre></td></tr></table></figure>
 <figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">clang++ main3.cpp -L./ -lv2 -ltest -o main3 &amp;&amp; ./main3</span><br><span class="line">2,1</span><br></pre></td></tr></table></figure>
 
-<p>隐藏 test 库 foo 函数（推荐这种方式，尽可能避免对外暴露无关符号）</p>
+<p>隐藏 test 库 foo 函数（<strong>推荐这种方式，尽可能避免对外暴露无关符号</strong>）</p>
 <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// libtest2.cpp</span></span><br><span class="line">__attribute__ ((<span class="built_in">visibility</span> (<span class="string">&quot;hidden&quot;</span>))) <span class="function"><span class="type">int</span> <span class="title">foo</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">test</span><span class="params">()</span></span>&#123;<span class="keyword">return</span> <span class="built_in">foo</span>();&#125;</span><br></pre></td></tr></table></figure>
 
 <figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">clang++ -fPIC libtest2.cpp -L. -lv1 -shared -o libtest2.so</span><br><span class="line">clang++ main.cpp -L./ -lv2 -ltest2 -o main &amp;&amp; ./main</span><br><span class="line">2,1</span><br></pre></td></tr></table></figure>
