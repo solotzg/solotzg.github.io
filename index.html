@@ -216,9 +216,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">Posted on</span>
-      
 
-      <time title="Created: 2022-03-30 16:04:36 / Modified: 22:55:56" itemprop="dateCreated datePublished" datetime="2022-03-30T16:04:36+08:00">2022-03-30</time>
+      <time title="Created: 2022-03-30 16:04:36" itemprop="dateCreated datePublished" datetime="2022-03-30T16:04:36+08:00">2022-03-30</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">Edited on</span>
+      <time title="Modified: 2022-03-31 11:59:56" itemprop="dateModified" datetime="2022-03-31T11:59:56+08:00">2022-03-31</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -240,8 +246,8 @@
     
     
     <div class="post-body" itemprop="articleBody">
-          <p>PingCAP（aka <code>贵司</code>）自研了套部署工具 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiup">TiUP</a> 来取代早前使用的重型部署工具 <a target="_blank" rel="noopener" href="https://github.com/ansible/ansible">Ansible</a>。实际使用过程中，有多次出现在打 patch 滚动重启过程中，TiFlash 节点行为不符合预期。后来发现，TiUP 打 patch 过程中，没有停进程且是直接增量覆盖部署目录，最基本的原子性保障更是无从谈起。</p>
-<p>v6.0 版本前的 TiFlash 运行时引入了 python 环境，其动态加载共享库的行为会被搜索路径下的文件所影响。如果前后的二进制对象不兼容，则直接影响程序的行为。</p>
+          <p>PingCAP（aka <code>贵司</code>）自研了套部署工具 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiup">TiUP</a> 来取代早前使用的重型部署工具 <a target="_blank" rel="noopener" href="https://github.com/ansible/ansible">Ansible</a>。实际使用过程中，有多次出现在打 patch 滚动重启过程中，TiFlash 节点行为不符合预期。后来发现，TiUP 打 patch 过程中，没有停进程且是直接 <code>tar</code> 命令解压覆盖部署目录，最基本的原子性保障更是无从谈起。</p>
+<p>v6.0 版本前 TiFlash 的部分模块包含动态加载<code>共享库</code>（aka <code>动态库</code>）的行为，这类行为会被搜索路径下的文件影响。如果存在某个时刻前后引入的二进制库不兼容，则直接影响程序的行为。</p>
 <p>因为是用 <code>tar</code> 命令解压覆盖，反而是没有出现老生常谈的 <code>cp</code> 覆盖动态库引起 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Segmentation_fault">Segmentation fault</a> 的问题。</p>
 <p>正好在此整理下动态库相关的问题。</p>
           <!--noindex-->
