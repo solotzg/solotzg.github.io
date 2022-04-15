@@ -28,7 +28,7 @@
 <meta property="og:description" content="PingCAP（aka 贵司）自研了套部署工具 TiUP 来取代早前使用的重型部署工具 Ansible。实际使用过程中，有多次出现在打 patch 滚动重启过程中，TiFlash 节点行为不符合预期。后来发现，TiUP 打 patch 过程中，没有停进程且是直接 tar 命令解压覆盖部署目录，原子性保障更是无从谈起。 v6.0 版本前 TiFlash 的部分模块包含动态加载 共享库（aka 动态库">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2022-03-30T08:04:36.000Z">
-<meta property="article:modified_time" content="2022-04-15T07:00:16.529Z">
+<meta property="article:modified_time" content="2022-04-15T10:08:40.244Z">
 <meta property="article:author" content="Zhigao Tong">
 <meta property="article:tag" content="PingCAP">
 <meta property="article:tag" content="Linux">
@@ -234,7 +234,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-04-15 15:00:16" itemprop="dateModified" datetime="2022-04-15T15:00:16+08:00">2022-04-15</time>
+      <time title="Modified: 2022-04-15 18:08:40" itemprop="dateModified" datetime="2022-04-15T18:08:40+08:00">2022-04-15</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -360,8 +360,8 @@
 </ul>
 <p>为了使程序模块中共享的指令部分在装载时不需要随装载地址变动而变动，可将指令中需要被修改的部分分离出来放到数据部分中，这样指令部分保持不变，<strong>数据部分可以在每个进程中有独立可修改的副本</strong>，这种方案就是 <code>地址无关代码（PIC，Position-independent Code）</code>。实现方式：</p>
 <ul>
-<li>GOT 本身位于数据相关表段，可以在模块装载时被修改，链接器在装载模块时会查找变量的实际地址并填充 GOT</li>
 <li>ELF 在数据相关表段里建立指向这些变量的指针数组，也被称为 <code>全局偏移表（Global Offset Table，GOT）</code>，当代码需要访问这些跨模块数据时，可通过 GOT 中变量对应的项找到目标地址</li>
+<li>GOT 本身位于数据相关表段，可以在模块装载时被修改，链接器在装载模块时会查找变量的实际地址并填充 GOT</li>
 <li>模块的数据相关表段在每个进程都有独立的副本</li>
 <li>通常 ELF 将 GOT 拆分成 2 个表段：<code>.got</code> 和 <code>.got.plt</code></li>
 </ul>
@@ -411,7 +411,7 @@
 <li>链接器基本规则：全局符号表中已存在同名符号，则后加入的忽略</li>
 </ul>
 </li>
-<li>首先载入主程序，main 中默认暴露了 foo() 且对应 v2 库的实现，foo 函数符号先注册并被定位到该入口（偏移地址 0x203080 对应的进程内虚拟地址）。</li>
+<li>首先载入主程序，main 中默认暴露了 foo() 且对应 v2 库的实现，foo 函数符号（地址 0x201800）先注册并被定位到该入口。</li>
 </ul>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">objdump -d main</span><br><span class="line"></span><br><span class="line">00000000002017c0 &lt;main&gt;:</span><br><span class="line">...</span><br><span class="line">  2017c8:       e8 33 00 00 00          callq  201800 &lt;_Z3foov&gt;  </span><br><span class="line">...</span><br><span class="line">  2017d0:       e8 0b 01 00 00          callq  2018e0 &lt;_Z4testv@plt&gt;</span><br><span class="line">...  </span><br><span class="line">0000000000201800 &lt;_Z3foov&gt;:</span><br><span class="line">  201800:       55                      push   %rbp</span><br><span class="line">  201801:       48 89 e5                mov    %rsp,%rbp</span><br><span class="line">  201804:       b8 02 00 00 00          mov    $0x2,%eax</span><br><span class="line">  201809:       5d                      pop    %rbp</span><br><span class="line">...  </span><br><span class="line">00000000002018e0 &lt;_Z4testv@plt&gt;:</span><br><span class="line">  2018e0:       ff 25 42 22 00 00       jmpq   *0x2242(%rip)        # 203b28 &lt;_Z4testv@Base&gt;</span><br><span class="line">  2018e6:       68 02 00 00 00          pushq  $0x2</span><br><span class="line">  2018eb:       e9 c0 ff ff ff          jmpq   2018b0 &lt;_fini+0x10&gt;</span><br></pre></td></tr></table></figure>
 
@@ -427,7 +427,7 @@
 </ul>
 </li>
 <li>16e6: 压栈 foo() 函数在 <code>.rela.plt</code> 段中的下标 2</li>
-<li>16eb: 跳转到符号解析和重定位流程，将 foo() 的进程内地址填入相对地址 0x3910，最后调用 foo() 函数</li>
+<li>16eb: 跳转到符号解析和重定位流程，将 foo() 的进程内地址 0x201800 填入偏移地址 0x3910，最后调用 foo() 函数</li>
 </ul>
 </li>
 </ul>
@@ -488,7 +488,7 @@
 <li>前后 so 文件完全一致：<ul>
 <li>如果调用到依赖外部符号的逻辑，但此时外部符号并没有经过重新解析，直接使用 <code>.got</code> &#x2F; <code>.got.plt</code> 段数据，则会引起 Segmentation fault</li>
 <li>如果调用的逻辑没有依赖外部符号<ul>
-<li>如果逻辑依赖 <code>.data</code> &#x2F; <code>.bss</code> 段等数据部分，则会因为数据被替换而引发异常</li>
+<li>如果逻辑依赖 <code>.data</code> &#x2F; <code>.bss</code> 段等数据部分，则会因为数据被替换而引发逻辑异常</li>
 <li>如果逻辑没有其他依赖，则可正常运行</li>
 </ul>
 </li>
@@ -507,12 +507,12 @@
 <h2 id="动态库性能开销"><a href="#动态库性能开销" class="headerlink" title="动态库性能开销"></a>动态库性能开销</h2><p><a href="#%E5%88%86%E6%9E%90%EF%BC%881%EF%BC%89">分析（1）</a> 中已基本描述了加载动态库和调用动态库内函数的流程。除此之外，动态库使用外部变量和全局变量时也有额外的寻址开销。</p>
 <h3 id="案例分析（3）"><a href="#案例分析（3）" class="headerlink" title="案例分析（3）"></a>案例分析（3）</h3><p>全局变量 <code>k</code> 和外部变量 <code>g</code> 的访问方式相同，需要读 GOT，例如 poo() 中的步骤为：</p>
 <ul>
-<li>1754: 读取 <code>rip</code> 寄存器中下个指令的实际内存地址，加上 <code>g</code> 在 GOT 中对应项的偏移地址 0x1275，读取并保存至 <code>rax</code> 寄存器</li>
-<li>175b: 根据 rax 寄存器中的值寻址取值保存至 eax</li>
+<li>1754: 读取 <code>rip</code> 寄存器中下个指令的实际内存地址，加上 <code>g</code> 在 GOT 中对应项的偏移地址 0x1275，读取 <code>g</code> 的内存地址并保存至 <code>rax</code> 寄存器</li>
+<li>175b: 根据 <code>rax</code> 寄存器中的值再次寻址读取保存至 eax</li>
 </ul>
 <p>静态局部变量 <code>goo()::c</code> 的访问则无需 GOT：</p>
 <ul>
-<li>1734:  通过 rip 和偏移地址直接获取 <code>goo()::c</code> 在当前进程内存空间中的值至 <code>eax</code> 寄存器</li>
+<li>1734: 通过 <code>rip</code> 寄存器和变量偏移地址直接获取 <code>goo()::c</code> 在当前进程内存空间中的值至 <code>eax</code> 寄存器</li>
 <li>动态库内访问静态变量，与使用静态链接库时是一样的 8b 类型的 mov 指令，性能上差距微乎其微</li>
 </ul>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">// libtest3.cpp</span><br><span class="line">int k=123;</span><br><span class="line">int foo()&#123;return k++;&#125;</span><br><span class="line">int goo()&#123;static int c=234;return c++;&#125;</span><br><span class="line">extern int g;</span><br><span class="line">int poo()&#123;return g++;&#125;</span><br></pre></td></tr></table></figure>
@@ -520,7 +520,7 @@
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line">clang++ -fPIC libtest3.cpp -shared -o libtest3.so</span><br><span class="line"></span><br><span class="line">nm -CD libtest3.so</span><br><span class="line"></span><br><span class="line">                 w __cxa_finalize</span><br><span class="line">000000000000178c T _fini</span><br><span class="line">                 U g</span><br><span class="line">                 w __gmon_start__</span><br><span class="line">0000000000001770 T _init</span><br><span class="line">                 w _ITM_deregisterTMCloneTable</span><br><span class="line">                 w _ITM_registerTMCloneTable</span><br><span class="line">00000000000039d8 D k</span><br><span class="line">0000000000001710 T foo()</span><br><span class="line">0000000000001730 T goo()</span><br><span class="line">0000000000001750 T poo()    </span><br><span class="line"></span><br><span class="line">objdump -d libtest3.so</span><br><span class="line"></span><br><span class="line">0000000000001710 &lt;_Z3foov&gt;:</span><br><span class="line">    1710:       55                      push   %rbp</span><br><span class="line">    1711:       48 89 e5                mov    %rsp,%rbp</span><br><span class="line">    1714:       48 8b 05 ad 12 00 00    mov    0x12ad(%rip),%rax        # 29c8 &lt;k@@Base-0x1010&gt;</span><br><span class="line">    171b:       8b 00                   mov    (%rax),%eax</span><br><span class="line">    171d:       89 c2                   mov    %eax,%edx</span><br><span class="line">    171f:       83 c2 01                add    $0x1,%edx</span><br><span class="line">    1722:       48 8b 0d 9f 12 00 00    mov    0x129f(%rip),%rcx        # 29c8 &lt;k@@Base-0x1010&gt;</span><br><span class="line">    1729:       89 11                   mov    %edx,(%rcx)</span><br><span class="line">    172b:       5d                      pop    %rbp</span><br><span class="line">    172c:       c3                      retq</span><br><span class="line">    172d:       0f 1f 00                nopl   (%rax)</span><br><span class="line"></span><br><span class="line">0000000000001730 &lt;_Z3goov&gt;:</span><br><span class="line">    1730:       55                      push   %rbp</span><br><span class="line">    1731:       48 89 e5                mov    %rsp,%rbp</span><br><span class="line">    1734:       8b 05 a2 22 00 00       mov    0x22a2(%rip),%eax        # 39dc &lt;_ZZ3goovE1c&gt;</span><br><span class="line">    173a:       89 c1                   mov    %eax,%ecx</span><br><span class="line">    173c:       83 c1 01                add    $0x1,%ecx</span><br><span class="line">    173f:       89 0d 97 22 00 00       mov    %ecx,0x2297(%rip)        # 39dc &lt;_ZZ3goovE1c&gt;</span><br><span class="line">    1745:       5d                      pop    %rbp</span><br><span class="line">    1746:       c3                      retq</span><br><span class="line">    1747:       66 0f 1f 84 00 00 00    nopw   0x0(%rax,%rax,1)</span><br><span class="line">    174e:       00 00</span><br><span class="line"></span><br><span class="line">0000000000001750 &lt;_Z3poov&gt;:</span><br><span class="line">    1750:       55                      push   %rbp</span><br><span class="line">    1751:       48 89 e5                mov    %rsp,%rbp</span><br><span class="line">    1754:       48 8b 05 75 12 00 00    mov    0x1275(%rip),%rax        # 29d0 &lt;g@Base&gt;</span><br><span class="line">    175b:       8b 00                   mov    (%rax),%eax</span><br><span class="line">    175d:       89 c2                   mov    %eax,%edx</span><br><span class="line">    175f:       83 c2 01                add    $0x1,%edx</span><br><span class="line">    1762:       48 8b 0d 67 12 00 00    mov    0x1267(%rip),%rcx        # 29d0 &lt;g@Base&gt;</span><br><span class="line">    1769:       89 11                   mov    %edx,(%rcx)</span><br><span class="line">    176b:       5d                      pop    %rbp</span><br><span class="line">    176c:       c3                      retq</span><br></pre></td></tr></table></figure>
 
 <hr>
-<p>通常来说动态库需尽量少使用外部变量和全局变量，以获得更好的隔离性，减少符号依赖风险，所以一般情况下讨论动态库的性能损耗着重于跨模块函数调用。但绝大多数实际应用层面，这些开销基本可以忽略。</p>
+<p>通常来说动态库会尽量少使用外部变量和全局变量，以获得更好的隔离性，减少符号依赖风险，所以一般情况下讨论动态库的性能损耗着重于跨模块函数调用。但绝大多数实际应用层面，这些开销基本可以忽略。</p>
 <h1 id="TODO"><a href="#TODO" class="headerlink" title="TODO"></a>TODO</h1><p>未完待续</p>
 
     </div>
