@@ -20,15 +20,15 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"solotzg.github.io","root":"/","images":"/images","scheme":"Mist","darkmode":false,"version":"8.10.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
 
-    <meta name="description" content="PingCAP（aka 贵司）自研了套部署工具 TiUP 来取代早前使用的重型部署工具 Ansible。实际使用过程中，有多次出现在打 patch 滚动重启过程中，TiFlash 节点行为不符合预期。后来发现，TiUP 打 patch 过程中，没有停进程且是直接 tar 命令解压覆盖部署目录，原子性保障更是无从谈起。 v6.0 版本前 TiFlash 的部分模块包含动态加载共享库（aka 动态库）">
+    <meta name="description" content="PingCAP（aka 贵司）自研了套部署工具 TiUP 来取代早前使用的重型部署工具 Ansible。实际使用过程中，有多次出现在打 patch 滚动重启过程中，TiFlash 节点行为不符合预期。后来发现，TiUP 打 patch 过程中，没有停进程且是直接 tar 命令解压覆盖部署目录，原子性保障更是无从谈起。 v6.0 版本前 TiFlash 的部分模块包含动态加载 共享库（aka 动态库">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Linux 动态链接库相关整理">
 <meta property="og:url" content="https://solotzg.github.io/2022/03/30/system/linux-dynamic-library/index.html">
 <meta property="og:site_name" content="SOLOTZG">
-<meta property="og:description" content="PingCAP（aka 贵司）自研了套部署工具 TiUP 来取代早前使用的重型部署工具 Ansible。实际使用过程中，有多次出现在打 patch 滚动重启过程中，TiFlash 节点行为不符合预期。后来发现，TiUP 打 patch 过程中，没有停进程且是直接 tar 命令解压覆盖部署目录，原子性保障更是无从谈起。 v6.0 版本前 TiFlash 的部分模块包含动态加载共享库（aka 动态库）">
+<meta property="og:description" content="PingCAP（aka 贵司）自研了套部署工具 TiUP 来取代早前使用的重型部署工具 Ansible。实际使用过程中，有多次出现在打 patch 滚动重启过程中，TiFlash 节点行为不符合预期。后来发现，TiUP 打 patch 过程中，没有停进程且是直接 tar 命令解压覆盖部署目录，原子性保障更是无从谈起。 v6.0 版本前 TiFlash 的部分模块包含动态加载 共享库（aka 动态库">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2022-03-30T08:04:36.000Z">
-<meta property="article:modified_time" content="2022-04-14T02:29:37.096Z">
+<meta property="article:modified_time" content="2022-04-15T07:00:16.529Z">
 <meta property="article:author" content="Zhigao Tong">
 <meta property="article:tag" content="PingCAP">
 <meta property="article:tag" content="Linux">
@@ -125,7 +125,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
-            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Linux-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E5%9F%BA%E7%A1%80"><span class="nav-number">1.</span> <span class="nav-text">Linux 文件系统基础</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Inode"><span class="nav-number">1.1.</span> <span class="nav-text">Inode</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#cp-x2F-rm-x2F-mv-x2F-tar-%E5%91%BD%E4%BB%A4"><span class="nav-number">1.2.</span> <span class="nav-text">cp&#x2F;rm&#x2F;mv&#x2F;tar 命令</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Linux-%E5%8A%A8%E6%80%81%E5%BA%93"><span class="nav-number">2.</span> <span class="nav-text">Linux 动态库</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8A%A8%E6%80%81%E5%BA%93%E9%93%BE%E6%8E%A5"><span class="nav-number">2.1.</span> <span class="nav-text">动态库链接</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90"><span class="nav-number">2.1.1.</span> <span class="nav-text">问题分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A3%E5%86%B3%E7%AC%A6%E5%8F%B7%E5%86%B2%E7%AA%81"><span class="nav-number">2.1.2.</span> <span class="nav-text">解决符号冲突</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%98%BE%E5%BC%8F%E5%8A%A0%E8%BD%BD%EF%BC%88%E8%BF%90%E8%A1%8C%E6%97%B6%E5%8A%A0%E8%BD%BD%EF%BC%89"><span class="nav-number">2.1.2.1.</span> <span class="nav-text">显式加载（运行时加载）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%AC%A6%E5%8F%B7%E9%9A%90%E8%97%8F"><span class="nav-number">2.1.2.2.</span> <span class="nav-text">符号隐藏</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9B%BF%E6%8D%A2%E5%8A%A8%E6%80%81%E5%BA%93"><span class="nav-number">2.2.</span> <span class="nav-text">替换动态库</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#TODO"><span class="nav-number">3.</span> <span class="nav-text">TODO</span></a></li></ol></div>
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Linux-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E5%9F%BA%E7%A1%80"><span class="nav-number">1.</span> <span class="nav-text">Linux 文件系统基础</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Inode"><span class="nav-number">1.1.</span> <span class="nav-text">Inode</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#cp-x2F-rm-x2F-mv-x2F-tar-%E5%91%BD%E4%BB%A4"><span class="nav-number">1.2.</span> <span class="nav-text">cp&#x2F;rm&#x2F;mv&#x2F;tar 命令</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Linux-%E5%8A%A8%E6%80%81%E5%BA%93"><span class="nav-number">2.</span> <span class="nav-text">Linux 动态库</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8A%A8%E6%80%81%E5%BA%93%E9%93%BE%E6%8E%A5"><span class="nav-number">2.1.</span> <span class="nav-text">动态库链接</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%881%EF%BC%89"><span class="nav-number">2.1.1.</span> <span class="nav-text">案例（1）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%86%E6%9E%90%EF%BC%881%EF%BC%89"><span class="nav-number">2.1.2.</span> <span class="nav-text">分析（1）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A3%E5%86%B3%E7%AC%A6%E5%8F%B7%E5%86%B2%E7%AA%81"><span class="nav-number">2.1.3.</span> <span class="nav-text">解决符号冲突</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%98%BE%E5%BC%8F%E5%8A%A0%E8%BD%BD%EF%BC%88%E8%BF%90%E8%A1%8C%E6%97%B6%E5%8A%A0%E8%BD%BD%EF%BC%89"><span class="nav-number">2.1.3.1.</span> <span class="nav-text">显式加载（运行时加载）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%AC%A6%E5%8F%B7%E9%9A%90%E8%97%8F"><span class="nav-number">2.1.3.2.</span> <span class="nav-text">符号隐藏</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9B%BF%E6%8D%A2%E5%8A%A8%E6%80%81%E5%BA%93"><span class="nav-number">2.2.</span> <span class="nav-text">替换动态库</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%882%EF%BC%89"><span class="nav-number">2.2.1.</span> <span class="nav-text">案例（2）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%86%E6%9E%90%EF%BC%882%EF%BC%89"><span class="nav-number">2.2.2.</span> <span class="nav-text">分析（2）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8A%A8%E6%80%81%E5%BA%93%E6%80%A7%E8%83%BD%E5%BC%80%E9%94%80"><span class="nav-number">2.3.</span> <span class="nav-text">动态库性能开销</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%E5%88%86%E6%9E%90%EF%BC%883%EF%BC%89"><span class="nav-number">2.3.1.</span> <span class="nav-text">案例分析（3）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#TODO"><span class="nav-number">3.</span> <span class="nav-text">TODO</span></a></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -234,7 +234,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-04-14 10:29:37" itemprop="dateModified" datetime="2022-04-14T10:29:37+08:00">2022-04-14</time>
+      <time title="Modified: 2022-04-15 15:00:16" itemprop="dateModified" datetime="2022-04-15T15:00:16+08:00">2022-04-15</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -257,13 +257,19 @@
     
     <div class="post-body" itemprop="articleBody">
         <p>PingCAP（aka <code>贵司</code>）自研了套部署工具 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiup">TiUP</a> 来取代早前使用的重型部署工具 <a target="_blank" rel="noopener" href="https://github.com/ansible/ansible">Ansible</a>。实际使用过程中，有多次出现在打 patch 滚动重启过程中，TiFlash 节点行为不符合预期。后来发现，TiUP 打 patch 过程中，没有停进程且是直接 <code>tar</code> 命令解压覆盖部署目录，原子性保障更是无从谈起。</p>
-<p>v6.0 版本前 TiFlash 的部分模块包含动态加载<code>共享库</code>（aka <code>动态库</code>）的行为，这类行为会被搜索路径下的文件影响。如果存在某个时刻前后引入的二进制库不兼容，则直接影响程序的行为。</p>
+<p>v6.0 版本前 TiFlash 的部分模块包含动态加载 <code>共享库</code>（aka <code>动态库</code>）的行为，这类行为会被搜索路径下的文件影响。如果存在某个时刻引入的二进制库不兼容，则直接影响程序的行为。</p>
 <p>因为是用 <code>tar</code> 命令解压覆盖，反而是没有出现老生常谈的 <code>cp</code> 覆盖动态库引起 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Segmentation_fault">Segmentation fault</a> 的问题。</p>
-<p>正好借此整理下动态库相关的问题。</p>
+<p>在此整理下相关的问题：</p>
+<ul>
+<li>cp &#x2F; tar 命令是如何工作的？</li>
+<li>cp 覆盖正在被使用的动态库为何会引发异常？</li>
+<li>调用动态库内函数为何会产生不符合直觉的行为？</li>
+<li>动态库性能开销有多大？</li>
+</ul>
 <span id="more"></span>
 
 <h1 id="Linux-文件系统基础"><a href="#Linux-文件系统基础" class="headerlink" title="Linux 文件系统基础"></a>Linux 文件系统基础</h1><p>相关基础参考 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Modern_Operating_Systems">Modern Operating Systems</a>，深度细节建议看操作系统代码实现。</p>
-<h2 id="Inode"><a href="#Inode" class="headerlink" title="Inode"></a>Inode</h2><p>Linux 下 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Inode">Inode</a> 是一个重要概念，是理解 Unix&#x2F;Linux 文件系统和硬盘储存的基础。Inode、软链接、硬链接 等相关概念基础参考 <a target="_blank" rel="noopener" href="https://www.ruanyifeng.com/blog/2011/12/inode.html">阮一峰. 理解inode</a>，解释得比较易懂。以下部分做点补充。</p>
+<h2 id="Inode"><a href="#Inode" class="headerlink" title="Inode"></a>Inode</h2><p>Linux 下 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Inode">Inode(Index node)</a> 是一个重要概念，是理解 Unix&#x2F;Linux 文件系统和硬盘储存的基础。Inode、软链接、硬链接 等相关基础可以参考 <a target="_blank" rel="noopener" href="https://www.ruanyifeng.com/blog/2011/12/inode.html">阮一峰. 理解inode</a>，解释得比较易懂。以下部分做点补充。</p>
 <hr>
 <p>Inode 本身是一种抽象设计，不同操作系统有各自实现，此处针对传统的类 Unix 文件系统。</p>
 <p>通过命令获取某块 3.6T 硬盘的 <code>Inode size</code> 值为 256</p>
@@ -273,9 +279,13 @@
 <figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">df</span> -hi /dev/<span class="variable">$&#123;disk&#125;</span></span><br><span class="line"></span><br><span class="line">Filesystem     Inodes IUsed IFree IUse% Mounted on</span><br><span class="line">xxxx           233M    33M  201M   14%  xxxx</span><br></pre></td></tr></table></figure>
 
 <p>可以推算出，该硬盘最多存储 954368 个 Inode。如果每个 Inode 对应一个 4K 大小的独立目录，总容量也不超过 3.65G。因此，确实会出现因 Inode 耗尽而无法创建文件的极端情况。</p>
+<p>Inode 在不同盘中互不依赖，存在 2 个不同盘上文件 Inode 号码相同的情况。</p>
 <hr>
 <p>通过 Inode 号码直接 直接删除 Inode 节点，等同于删除文件</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">find $&#123;tar_path&#125; -inum $&#123;inode_num&#125; -delete</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">ls -i</span><br><span class="line"></span><br><span class="line"> 134610994 anaconda-post.log  1320256620 dev   134611301 home   134611303 lib64   146932813 misc   148638932 opt    148768809 root   134611337 sbin           1 sys   148768954 usr</span><br><span class="line"> 134610995 bin		       148635658 etc   134611302 lib    134611304 media   134611305 mnt            1 proc   148768952 run    134611338 srv    148768953 tmp   148772892 var</span><br><span class="line"></span><br><span class="line">find . -inum 134610994 -delet</span><br></pre></td></tr></table></figure>
+
+<p>当文件被删除后，Inode 会被系统回收分配给其他文件</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">touch x</span><br><span class="line">ls -i x</span><br><span class="line"></span><br><span class="line">122162998 x</span><br><span class="line"></span><br><span class="line">cp x y</span><br><span class="line">ls -i y</span><br><span class="line"></span><br><span class="line">122163059 y</span><br><span class="line"></span><br><span class="line">rm x</span><br><span class="line">ls -i x</span><br><span class="line"></span><br><span class="line">ls: cannot access x: No such file or directory</span><br><span class="line"></span><br><span class="line">cp y z</span><br><span class="line">ls -i z</span><br><span class="line"></span><br><span class="line">122162998 z</span><br></pre></td></tr></table></figure>
 
 <hr>
 <p>Unix&#x2F;Linux 系统中，目录（directory）也是一种文件：</p>
@@ -285,48 +295,43 @@
 <li>后者的 Inode 号码就是当前目录的父目录的 Inode 号码，等同于父目录的 “硬链接”，令父目录的 “链接数” 加 1。</li>
 <li>对于根目录，则两者都指向自己。</li>
 </ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">stat /</span><br><span class="line"></span><br><span class="line">  File: &#x27;/&#x27;</span><br><span class="line">  Size: 4096            Blocks: 8          IO Block: 4096   directory</span><br><span class="line">Device: 36h/54d Inode: 148635650   Links: 1</span><br><span class="line">Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)</span><br><span class="line">Access: 2022-04-14 22:32:22.624785541 +0800</span><br><span class="line">Modify: 2022-04-14 22:32:22.624785541 +0800</span><br><span class="line">Change: 2022-04-14 22:32:22.698785457 +0800</span><br><span class="line"> Birth: -</span><br><span class="line"></span><br><span class="line">ls -ai /</span><br><span class="line"></span><br><span class="line"> 148635650 .            134610994 anaconda-post.log   148635658 etc    134611303 lib64   134611305 mnt    148768809 root   134611338 srv   148768954 usr</span><br><span class="line"> 148635650 ..           134610995 bin                 134611301 home   134611304 media   148638932 opt    148768952 run            1 sys   148772892 var</span><br><span class="line"> 148635665 .dockerenv  1321917680 dev                 134611302 lib    146932813 misc            1 proc   134611337 sbin   148768953 tmp</span><br></pre></td></tr></table></figure>
+
 <hr>
-<p>“硬链接” 目标和源因为共用同个 Inode，因此不能跨盘建立，否则报错 <code>Invalid cross-device link</code>。通过 <code>ln $&#123;src&#125; $&#123;tar&#125;</code> 建立 “硬链接” 无法作用于目录，否则报错 <code>hard link not allowed for directory</code>。</p>
-<p>与 “硬链接” 不同，”软链接” 自身就是一个独立的二进制文件，每次使用时再由文件系统解析到对应的目标，如果解析失败则会报错。也就意味着 “软链接” 不会对文件系统本身产生侵入性影响。</p>
-<p>“硬链接” 自身就是文件系统中的一环，链接数归 0 后系统才会尝试回收对应的文件，与引用计数的管理策略类似。如果目录可以建立 “硬链接”，则容易造成循环引用，导致文件无法回收。</p>
+<p>硬链接的目标和源共用同个 Inode，因此不能跨盘建立，否则报错 <code>Invalid cross-device link</code>。通过 <code>ln $&#123;src&#125; $&#123;tar&#125;</code> 建立硬链接无法作用于目录，否则报错 <code>hard link not allowed for directory</code>。</p>
+<p>与硬链接不同，软链接自身就是一个独立的二进制文件，每次使用时再由文件系统解析到对应的目标，如果失败则会返回错误。也就意味着软链接不会对文件系统本身产生侵入性影响。</p>
+<p>硬链接自身就是文件系统中的一环，链接数归 0 后系统才会尝试回收对应的文件，与引用计数的管理策略类似。如果目录可以建立硬链接，则容易造成循环引用，导致文件无法回收。</p>
 <h2 id="cp-x2F-rm-x2F-mv-x2F-tar-命令"><a href="#cp-x2F-rm-x2F-mv-x2F-tar-命令" class="headerlink" title="cp&#x2F;rm&#x2F;mv&#x2F;tar 命令"></a>cp&#x2F;rm&#x2F;mv&#x2F;tar 命令</h2><p>用 <code>strace</code> 可以很清楚地看到命令执行时的系统调用。通常来说 <code>rm</code> 主要用到 <code>unlink*</code>，<code>mv</code> 主要用到 <code>rename*</code>，<code>cp</code> 主要用到 <code>open</code>、<code>read</code>、<code>write</code>。</p>
-<p>根据 <a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man2/unlink.2.html">linux&#x2F;man-pages&#x2F;unlink</a>，<code>unlink</code> 用于按照文件名删除文件</p>
+<p>根据 <a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man2/unlink.2.html">linux&#x2F;man-pages&#x2F;unlink</a>，<code>unlink</code> 用于按照文件名删除文件：</p>
 <ul>
 <li>如果文件无其他链接，且没有进程打开该文件，则删除文件并释放空间。</li>
 <li>如果文件仅此一份链接，但存在进程仍然打开该文件，则删除后文件将一直存在，直到引用它的最后一个文件描述符关闭，系统才会回收。</li>
 </ul>
 <p>因此通过 <code>unlink</code> 删除正在被使用的文件是安全的。</p>
-<p><code>rename</code> 面对的场景更加复杂。根据 <a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man2/rename.2.html">linux&#x2F;man-pages&#x2F;rename</a></p>
+<p><code>rename</code> 面对的场景更加复杂，根据 <a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man2/rename.2.html">linux&#x2F;man-pages&#x2F;rename</a>：</p>
 <ul>
-<li>目标文件已经存在时，如果是非跨盘操作，会保证替换的原子性</li>
-<li>如果是跨盘操作，则会报错 <code>Invalid cross-device link</code>；<code>mv</code> 命令会忽略报错，通过 unlink 删除目标文件，新建文件后复制内容，最后 unlink 删除源文件。</li>
+<li>目标文件已经存在时，如果是非跨盘操作，会保证替换的<em><strong>原子性</strong></em>。</li>
+<li>如果是跨盘操作，则报错 <code>Invalid cross-device link</code>；<code>mv</code> 命令会忽略报错，通过 unlink 删除目标文件，新建文件后复制内容，最后 unlink 删除源文件；</li>
 </ul>
-<p>当目标文件已存在，<code>cp</code> 命令调用 open 的参数会包含 <code>O_TRUNC</code>，即 truncate 模式：复用目标文件 Inode 并清空内容，再把源文件内容写入目标文件。</p>
+<p>当目标文件已存在，<code>cp</code> 命令调用 open 的参数会包含 <code>O_TRUNC</code>，即 truncate 模式：复用目标文件 Inode 并清空内容，把源文件内容写入目标文件。</p>
 <p>追踪 <code>tar</code> 命令的执行过程，可以看到当目标文件已存在时，是 unlink 删除后再新建并复制写入。所以通过 tar 命令覆盖正在被使用的文件也是安全的。</p>
 <hr>
-<p>当程序正在运行时，调用 <code>cp</code> 尝试覆盖其二进制文件，会报错 <code>Text file busy</code>。如果使用 <code>cp -f</code> 则会忽略报错，并执行 unlink 后再复制，<strong>此时 Inode 已经发生改变</strong>。</p>
-<h1 id="Linux-动态库"><a href="#Linux-动态库" class="headerlink" title="Linux 动态库"></a>Linux 动态库</h1><p>部分基本概念可参考 <a target="_blank" rel="noopener" href="https://blog.csdn.net/nkguohao/article/details/48679235">linux下静态库、动态库总结</a>。强烈推荐 <a target="_blank" rel="noopener" href="https://book.douban.com/subject/3652388/">《程序员的自我修养——链接装载与库》</a> 这本书，细致全面地囊括了各项相关知识。</p>
-<p>Linux 下的库有两种：<code>静态库</code> 和 <code>共享库（aka 动态库）</code>：</p>
-<ul>
-<li>静态用 <code>.a</code> 为后缀。静态库的代码在编译过程中已经被载入可执行程序，因此生成的可执行程序体积较大。</li>
-<li>动态库通常用 <code>.so</code> 为后缀，MacOS 为 <code>.dylib</code>，Windows 为 <code>.ddl</code></li>
-</ul>
-<p>Linux 下动态库、静态库、可执行文件的格式均 <code>ELF（Executable Linkable Format）</code>，可通过 <code>file</code> 命令查看具体类型细节。</p>
+<p>当程序正在运行时，调用 <code>cp</code> 尝试覆盖其二进制文件，会报错 <code>Text file busy</code>。如果使用 <code>cp -f</code> 进行覆盖则会忽略报错，并执行 unlink 后再复制，<strong>前后 Inode 已经发生改变</strong>。</p>
+<h1 id="Linux-动态库"><a href="#Linux-动态库" class="headerlink" title="Linux 动态库"></a>Linux 动态库</h1><p>强烈推荐 <a target="_blank" rel="noopener" href="https://book.douban.com/subject/3652388/">《程序员的自我修养——链接装载与库》</a> 这本书，细致全面地囊括了各项相关知识。</p>
+<p>Linux 下的库有两种：<code>静态库</code> 和 <code>共享库（aka 动态库）</code>，静态用 <code>.a</code> 为后缀，动态库通常用 <code>.so</code> 为后缀。</p>
+<p>Linux 下动态库、静态库、可执行文件的格式均 <code>ELF（Executable Linkable Format）</code>，可通过 <code>file</code> 命令查看具体类型细节。使用 <code>ldd</code> 工具，查看目标文件依赖的动态库。</p>
 <p>动态库的优势：</p>
 <ul>
 <li>不同的应用程序如果调用相同的库，那么在内存里只需要有一份该共享库的实例</li>
 <li>动态库的代码是在可执行程序运行时才载入内存的，在编译过程中仅简单的引用，生成的可执行程序代码体积较小</li>
-<li>具有部分相对独立的构建环境，减少与宿主进程产生链接符号污染</li>
 <li>编译链接代价小，对于长期稳定的模块库，无需反复拷贝数据</li>
 <li>库动态替换，可支持程序热更新</li>
 </ul>
 <p>动态库的劣势：</p>
 <ul>
-<li>性能损耗 1%～5%，全局和静态数据访问、跨模块调用 需要额外定位和寻址开销</li>
+<li>全局和静态数据访问、跨模块函数调用 需要额外定位和寻址开销，造成性能损耗</li>
 <li>模块兼容性问题 DDL hell</li>
 </ul>
-<p>使用 <code>ldd</code> 工具，查看目标文件依赖的动态库。</p>
-<p>目标文件将不同属性的信息分<code>段（Segment）</code> 存储，源代码编译后的指令通常被存放在 <code>.text（代码段）</code>，已初始化的全局变量和局部静态变量通常被存放在 <code>.data（数据段）</code>，而未初始化的则是 <code>.bss</code>。可用 <code>objdump</code> 或 <code>readelf</code> 工具导出相关信息。</p>
 <p>静态链接的过程主要包括：地址和空间分配（Address and Storage Allocation）、符号决议（Symbol Resolution，aka 符号绑定）、重定位（Relocation）等。</p>
 <p>链接中，函数和变量统称为 <code>符号（Symbol）</code>，函数名或变量名就是符号名。每个目标文件都有一个 <code>符号表（Symbol Table）</code>，表中记录了目标文件用到的所有符号。</p>
 <p>使用 <code>nm</code> 命令查看目标文件的符号信息，<a target="_blank" rel="noopener" href="https://linux.die.net/man/1/nm">nm(1) - Linux man page</a>，符号类型主要包括：</p>
@@ -336,21 +341,31 @@
 <li>W &#x2F; w：”弱态” 符号，它们虽然在库中被定义，但是可能被其他库中的同名符号覆盖</li>
 <li>B &#x2F; b：bss 中的未初始化全局&#x2F;局部变量</li>
 <li>D &#x2F; d：数据段中初始化的全局&#x2F;局部变量 </li>
-<li>……</li>
+<li>…</li>
 </ul>
 <hr>
-<p>为了使程序模块中共享的指令部分在装载时不需要随装载地址变动而变动，可将指令中需要被修改的部分分离出来放到数据部分中，这样指令部分保持不变，数据部分可以在每个进程中有独立可修改的副本。这种方案就是 <code>地址无关代码（PIC，Position-independent Code）</code>。</p>
+<p>目标文件将不同属性的信息分<code>段（Segment）</code> 存储，可用 <code>objdump</code> 或 <code>readelf</code> 工具导出相关信息：</p>
 <ul>
-<li>ELF 在数据段里建立指向这些变量的指针数组，也被称为 <code>全局偏移表（Global Offset Table，GOT）</code>，当代码需要访问这些跨模块数据时，可通过 GOT 中变量对应的项找到目标地址</li>
-<li>GOT 本身位于数据段，可以在模块装载时被修改，链接器在装载模块时会查找每个变量的地址并填充 GOT</li>
-<li>模块的数据段在每个进程都有独立的副本</li>
+<li><code>.dynsym</code> 未定义分配的符号表</li>
+<li><code>.rel.dyn</code> 加载时需要重定位的变量</li>
+<li><code>.rel.plt</code> 需要重定位的函数</li>
+<li><code>.text</code> 源代码编译后的指令</li>
+<li><code>.plt</code> 延迟绑定的外部函数调用的指令</li>
+<li><code>.data</code> 已初始化的全局变量和局部静态变量</li>
+<li><code>.bss</code> 未初始化的全局变量和局部静态变量</li>
+<li><code>.symtab</code> 全量符号表</li>
+<li><code>.got</code> 外部全局变量和局部静态变量地址表</li>
+<li><code>.got.plt</code> 外部函数地址表</li>
+<li>…</li>
 </ul>
-<p>ELF 普遍采用延迟绑定的的做法，基本思想是当函数第一次被调用时才进行绑定（符号查找、重定位等），使用 <code>PLT（Procedure Linkage Table）</code> 的方法来实现。</p>
-<p>ELF 将 GOT 拆分成 2 个表段：<code>.got</code> 和 <code>.got.plt</code>，可通过命令 <code>objdump -h</code> 查看属性。</p>
+<p>为了使程序模块中共享的指令部分在装载时不需要随装载地址变动而变动，可将指令中需要被修改的部分分离出来放到数据部分中，这样指令部分保持不变，<strong>数据部分可以在每个进程中有独立可修改的副本</strong>，这种方案就是 <code>地址无关代码（PIC，Position-independent Code）</code>。实现方式：</p>
 <ul>
-<li><code>.got</code> 用来保存全局变量引用的地址</li>
-<li><code>.got.plt</code> 用来保存函数引用的地址</li>
+<li>GOT 本身位于数据相关表段，可以在模块装载时被修改，链接器在装载模块时会查找变量的实际地址并填充 GOT</li>
+<li>ELF 在数据相关表段里建立指向这些变量的指针数组，也被称为 <code>全局偏移表（Global Offset Table，GOT）</code>，当代码需要访问这些跨模块数据时，可通过 GOT 中变量对应的项找到目标地址</li>
+<li>模块的数据相关表段在每个进程都有独立的副本</li>
+<li>通常 ELF 将 GOT 拆分成 2 个表段：<code>.got</code> 和 <code>.got.plt</code></li>
 </ul>
+<p>跨模块的函数调用也是同样原理，每次调用前需要定位到函数在当前进程中的内存虚拟地址。ELF 普遍采用延迟绑定的的做法，基本思想是当函数第一次被调用时才进行绑定（符号查找、重定位等），使用 <code>PLT（Procedure Linkage Table）</code> 的方法来实现。实际案例见下文。</p>
 <h2 id="动态库链接"><a href="#动态库链接" class="headerlink" title="动态库链接"></a>动态库链接</h2><p>动态链接｜执行时搜索路径顺序：</p>
 <ol>
 <li>编译目标代码时指定的动态库搜索路径</li>
@@ -358,60 +373,65 @@
 <li>配置文件 <code>/etc/ld.so.conf</code> 中指定的动态库搜索路径</li>
 <li>默认的动态库搜索路径：<code>/lib</code>、<code>/usr/lib</code>、<code>/usr/local/lib</code></li>
 </ol>
-<hr>
-<p>当程序链接多个包含相同函数的库时，会出现非预期的结果，例如：</p>
+<h3 id="案例（1）"><a href="#案例（1）" class="headerlink" title="案例（1）"></a>案例（1）</h3><p><em><strong>当程序链接多个包含相同函数的库时，可能出现非预期的结果</strong></em>，例如：</p>
 <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// v1.cpp</span></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">foo</span><span class="params">()</span></span>&#123;<span class="keyword">return</span> <span class="number">1</span>;&#125;</span><br></pre></td></tr></table></figure>
 <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// libtest.cpp</span></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">foo</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">test</span><span class="params">()</span></span>&#123;<span class="keyword">return</span> <span class="built_in">foo</span>();&#125;</span><br></pre></td></tr></table></figure>
 <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// v2.cpp</span></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">foo</span><span class="params">()</span></span>&#123;<span class="keyword">return</span> <span class="number">2</span>;&#125;</span><br></pre></td></tr></table></figure>
 <figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">clang++ -c v1.cpp -o v1.o &amp;&amp; ar -cr libv1.a v1.o</span><br><span class="line">clang++ -c v2.cpp -o v2.o &amp;&amp; ar -cr libv2.a v2.o</span><br><span class="line">clang++ -fPIC libtest.cpp -L. -lv1 -shared -o libtest.so</span><br></pre></td></tr></table></figure>
 <figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// main.cpp</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">foo</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">test</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span></span>&#123;std::cout&lt;&lt;<span class="built_in">foo</span>()&lt;&lt;<span class="string">&quot;,&quot;</span>&lt;&lt;<span class="built_in">test</span>()&lt;&lt;std::endl;&#125;</span><br></pre></td></tr></table></figure>
+
 <p>编译执行结果为</p>
 <figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">clang++ main.cpp -L./ -lv2 -ltest -rpath `<span class="built_in">pwd</span>` -o main &amp;&amp; ./main</span><br><span class="line">2,2</span><br></pre></td></tr></table></figure>
 
 <p>在 libtest.so 内部存在已定义的函数 <code>foo()</code> 和 <code>test()</code>，但实际上 test() 调用的是 v2 库中的 foo() 而不是 libtest.so 自身的，与直觉相悖。</p>
-<p>交换库链接顺序 或者 只链接 libtest.so，最终调用的才是 libtest.so 中的 foo() 。</p>
+<p>交换库链接顺序 或者只链接 libtest.so，最终调用的才是 libtest.so 中的 foo() 。</p>
 <figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">clang++ main.cpp -L./  -ltest -lv2 -rpath `<span class="built_in">pwd</span>` -o main &amp;&amp; ./main</span><br><span class="line">1,1</span><br><span class="line">clang++ main.cpp -L./ -ltest -rpath `<span class="built_in">pwd</span>` -o main &amp;&amp; ./main</span><br><span class="line">1,1</span><br></pre></td></tr></table></figure>
 
-<h3 id="问题分析"><a href="#问题分析" class="headerlink" title="问题分析"></a>问题分析</h3><p>libtest.so 中对外暴露函数 <code>test()</code> 和 <code>foo()</code> </p>
+<h3 id="分析（1）"><a href="#分析（1）" class="headerlink" title="分析（1）"></a>分析（1）</h3><p>libtest.so 中对外暴露函数 <code>test()</code> 和 <code>foo()</code> ，test() 内调用了 foo()，所以需要对 foo() 进行装载时重定位。</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">nm -CD libtest.so</span><br><span class="line"></span><br><span class="line">                 w __cxa_finalize</span><br><span class="line">0000000000001698 T _fini</span><br><span class="line">                 w __gmon_start__</span><br><span class="line">000000000000167c T _init</span><br><span class="line">                 w _ITM_deregisterTMCloneTable</span><br><span class="line">                 w _ITM_registerTMCloneTable</span><br><span class="line">0000000000001670 T foo()</span><br><span class="line">0000000000001660 T test()</span><br></pre></td></tr></table></figure>
 
-<p><code>.rel.dyn</code> 保存加载时需要重定位的变量，<code>.rel.plt</code> 保存需要重定位的函数。test() 内调用了 foo()，所以需要对 foo() 进行装载时重定位。</p>
+<p><code>foo</code> 外部函数入口偏移地址为 0x3910，在 .rela.plt 段的下标为 2，<code>.got.plt</code> 起始地址为 0x38e8，<code>.got.plt</code> 前 3 项为：<code>.dymanic</code> 段地址、本模块 ID、符合解析和重定位相关函数地址。验证得 0x38e8 + 8 * (3 + 2) &#x3D; 0x3910。</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">readelf -r libtest.so</span><br><span class="line"></span><br><span class="line">Relocation section &#x27;.rela.dyn&#x27; at offset 0x430 contains 7 entries:</span><br><span class="line">  Offset          Info           Type           Sym. Value    Sym. Name + Addend</span><br><span class="line">0000000026f0  000000000008 R_X86_64_RELATIVE                    26f0</span><br><span class="line">0000000026f8  000000000008 R_X86_64_RELATIVE                    1610</span><br><span class="line">000000002700  000000000008 R_X86_64_RELATIVE                    1650</span><br><span class="line">0000000028c8  000100000006 R_X86_64_GLOB_DAT 0000000000000000 __gmon_start__ + 0</span><br><span class="line">0000000028d0  000200000006 R_X86_64_GLOB_DAT 0000000000000000 _ITM_deregisterTMClone + 0</span><br><span class="line">0000000028d8  000300000006 R_X86_64_GLOB_DAT 0000000000000000 _ITM_registerTMCloneTa + 0</span><br><span class="line">0000000028e0  000400000006 R_X86_64_GLOB_DAT 0000000000000000 __cxa_finalize@GLIBC_2.2.5 + 0</span><br><span class="line"></span><br><span class="line">Relocation section &#x27;.rela.plt&#x27; at offset 0x4d8 contains 3 entries:</span><br><span class="line">  Offset          Info           Type           Sym. Value    Sym. Name + Addend</span><br><span class="line">000000003900  000100000007 R_X86_64_JUMP_SLO 0000000000000000 __gmon_start__ + 0</span><br><span class="line">000000003908  000400000007 R_X86_64_JUMP_SLO 0000000000000000 __cxa_finalize@GLIBC_2.2.5 + 0</span><br><span class="line">000000003910  000800000007 R_X86_64_JUMP_SLO 0000000000001670 _Z3foov + 0</span><br></pre></td></tr></table></figure>
 
-<p><code>foo</code> 外部函数入口偏移地址为 0x3910，在 .rela.plt 段的下标为 2，<code>.got.plt</code> 起始地址为 0x38e8，<code>.got.plt</code> 前 3 项为：<code>.dymanic</code> 段地址、本模块 ID、符合解析和重定位相关函数地址。验证得 0x38e8 + 8 * (3 + 2) &#x3D; 0x3910。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">readelf -S libtest.so</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line">  [13] .plt              PROGBITS         00000000000016b0  000006b0</span><br><span class="line">       0000000000000040  0000000000000000  AX       0     0     16</span><br><span class="line">  [18] .got              PROGBITS         00000000000028c8  000008c8</span><br><span class="line">       0000000000000020  0000000000000000  WA       0     0     8</span><br><span class="line">  [19] .data             PROGBITS         00000000000038e8  000008e8</span><br><span class="line">       0000000000000000  0000000000000000  WA       0     0     1</span><br><span class="line">  [21] .got.plt          PROGBITS         00000000000038e8  000008e8</span><br><span class="line">       0000000000000030  0000000000000000  WA       0     0     8</span><br><span class="line">...</span><br><span class="line">       </span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">readelf -S libtest.so</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line">  [13] .plt              PROGBITS         00000000000016b0  000006b0</span><br><span class="line">       0000000000000040  0000000000000000  AX       0     0     16</span><br><span class="line">  [18] .got              PROGBITS         00000000000028c8  000008c8</span><br><span class="line">       0000000000000020  0000000000000000  WA       0     0     8</span><br><span class="line">  [19] .data             PROGBITS         00000000000038e8  000008e8</span><br><span class="line">       0000000000000000  0000000000000000  WA       0     0     1</span><br><span class="line">  [21] .got.plt          PROGBITS         00000000000038e8  000008e8</span><br><span class="line">       0000000000000030  0000000000000000  WA       0     0     8</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
 
-<p>运行 main 时，libtest.so 对应的地址空间为</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">cat /proc/&lt;pid-of-program&gt;/maps</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line">7f0fb3704000-7f0fb3705000 r--p 00000000 103:00 122163012                 /...//libtest.so</span><br><span class="line">7f0fb3705000-7f0fb3706000 r-xp 00000000 103:00 122163012                 /.../libtest.so</span><br><span class="line">7f0fb3706000-7f0fb3707000 r--p 00000000 103:00 122163012                 /.../libtest.so</span><br><span class="line">7f0fb3707000-7f0fb3708000 rw-p 00000000 103:00 122163012                 /.../libtest.so</span><br><span class="line">...</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>魔改下 main.cpp 令其持续 sleep 不退出，运行时可以根据 pid 查看进程地址空间：</p>
+<ul>
+<li>00201000-00202000 段主要是源代码编译后的指令，可读可执行，不可写</li>
+<li>00200000-00201000 ，00202000-00203000 段为只读数据部分，前者主要是字符串常量，后者则主要是静态数据</li>
+<li>00203000-00204000 段为可写数据部分</li>
+<li>libtest.so 对应的内存地址空间从 7f0fb3704000 开始，布局与上面类似</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">cat /proc/&lt;pid-of-program&gt;/maps</span><br><span class="line"></span><br><span class="line">00200000-00201000 r--p 00000000 103:00 122162998                         /.../main</span><br><span class="line">00201000-00202000 r-xp 00000000 103:00 122162998                         /.../main</span><br><span class="line">00202000-00203000 r--p 00000000 103:00 122162998                         /.../main</span><br><span class="line">00203000-00204000 rw-p 00000000 103:00 122162998                         /.../main</span><br><span class="line">...</span><br><span class="line">7f0fb3704000-7f0fb3705000 r--p 00000000 103:00 122163012                 /.../libtest.so</span><br><span class="line">7f0fb3705000-7f0fb3706000 r-xp 00000000 103:00 122163012                 /.../libtest.so</span><br><span class="line">7f0fb3706000-7f0fb3707000 r--p 00000000 103:00 122163012                 /.../libtest.so</span><br><span class="line">7f0fb3707000-7f0fb3708000 rw-p 00000000 103:00 122163012                 /.../libtest.so</span><br><span class="line">...</span><br><span class="line"></span><br></pre></td></tr></table></figure>
 
 <p>该案例使用动态库的方式为<code>隐式加载</code>（载入时加载）</p>
 <ul>
-<li>类似静态库链接的过程发生在程序加载时，动态链接器将所有相关动态库装载到进程地址空间，将程序中未定义的符号绑定到相应的动态链接库，进行重定位工作，即 <code>装载时重定位（Load Time Relocation）</code>。<ul>
+<li>类似静态库链接的过程发生在程序加载时，动态链接器将所有相关动态库装载到进程地址空间，将程序中未定义的符号绑定到相应的动态链接库，进行重定位工作，即 <code>装载时重定位（Load Time Relocation）</code>：<ul>
 <li>链接器按照深度｜广度优先顺序加载把程序和相关共享库的符号表都合并到 <strong>全局符号表（Global Symbol Table）</strong></li>
 <li>链接器基本规则：全局符号表中已存在同名符号，则后加入的忽略</li>
 </ul>
 </li>
-<li>首先载入主程序，main 中默认暴露了 foo() 且对应 v2 库的定义，foo 函数符号先注册并被定位到该入口（偏移地址 0x203080 对应的进程内虚拟地址）。</li>
+<li>首先载入主程序，main 中默认暴露了 foo() 且对应 v2 库的实现，foo 函数符号先注册并被定位到该入口（偏移地址 0x203080 对应的进程内虚拟地址）。</li>
 </ul>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">objdump -d main</span><br><span class="line"></span><br><span class="line">0000000000202560 &lt;main&gt;:</span><br><span class="line">...</span><br><span class="line">  202568:       e8 13 0b 00 00          callq  203080 &lt;_Z3foov&gt;</span><br><span class="line">...</span><br><span class="line">  202594:       e8 d7 0b 00 00          callq  203170 &lt;_Z4testv@plt&gt;</span><br><span class="line">...  </span><br><span class="line">0000000000203080 &lt;_Z3foov&gt;:</span><br><span class="line">  203080:       55                      push   %rbp</span><br><span class="line">  203081:       48 89 e5                mov    %rsp,%rbp</span><br><span class="line">  203084:       b8 02 00 00 00          mov    $0x2,%eax</span><br><span class="line">  203089:       5d                      pop    %rbp</span><br><span class="line">  20308a:       c3                      retq</span><br><span class="line">...  </span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">objdump -d main</span><br><span class="line"></span><br><span class="line">00000000002017c0 &lt;main&gt;:</span><br><span class="line">...</span><br><span class="line">  2017c8:       e8 33 00 00 00          callq  201800 &lt;_Z3foov&gt;  </span><br><span class="line">...</span><br><span class="line">  2017d0:       e8 0b 01 00 00          callq  2018e0 &lt;_Z4testv@plt&gt;</span><br><span class="line">...  </span><br><span class="line">0000000000201800 &lt;_Z3foov&gt;:</span><br><span class="line">  201800:       55                      push   %rbp</span><br><span class="line">  201801:       48 89 e5                mov    %rsp,%rbp</span><br><span class="line">  201804:       b8 02 00 00 00          mov    $0x2,%eax</span><br><span class="line">  201809:       5d                      pop    %rbp</span><br><span class="line">...  </span><br><span class="line">00000000002018e0 &lt;_Z4testv@plt&gt;:</span><br><span class="line">  2018e0:       ff 25 42 22 00 00       jmpq   *0x2242(%rip)        # 203b28 &lt;_Z4testv@Base&gt;</span><br><span class="line">  2018e6:       68 02 00 00 00          pushq  $0x2</span><br><span class="line">  2018eb:       e9 c0 ff ff ff          jmpq   2018b0 &lt;_fini+0x10&gt;</span><br></pre></td></tr></table></figure>
 
 <ul>
 <li>由于 libtest.so 对外暴露了 foo()，所以 test 函数调用 foo 无法按照模块内函数调用的方式，编译器会当作模块外函数处理。<ul>
 <li>1664: 通过命令可以看到 <code>&lt;_Z4testv&gt;</code> 实际调用的是 <code>&lt;_Z3foov@plt&gt;</code> 而非 <code>&lt;_Z3foov&gt;</code><ul>
-<li>这是一条相对地址调用指令：指令码为 e8 77 00 00 00，后四位是目标地址相对于当前指令下一条指令的偏移 0x77，下一条指令地址为 0x1669，0x1669 + 0x77 &#x3D; 0x16e0</li>
+<li>指令码为 e8 77 00 00 00，第一字节表示指令类型为 <strong>相对地址调用（Call near, relative, displacement relative to next instruction）</strong>，后四子节是目标地址相对于当前指令下一条指令的偏移 0x77，下一条指令偏移地址为 0x1669，0x1669 + 0x77 &#x3D; 0x16e0</li>
 </ul>
 </li>
 <li>16e0: 通过偏移地址 0x3910 间接跳转，该地址位于 <code>.got.plt</code> 段，用于保存 foo() 函数相应的项<ul>
-<li>如果链接器已经初始化该项，并将 foo() 对应的进程虚拟地址填入该项，则可直接跳转实现函数调用</li>
+<li>如果链接器已经初始化该项，该项对应 foo() 的进程内地址，则可直接跳转实现函数调用</li>
 <li>为了实现延迟绑定，初始化时并未将 foo() 地址填入该项，填入该项实际上是 16e6: 行对应的地址，等效于是间接跳转到下一行</li>
 </ul>
 </li>
 <li>16e6: 压栈 foo() 函数在 <code>.rela.plt</code> 段中的下标 2</li>
-<li>16eb: 跳转到符号解析和重定位流程，将 foo() 地址填入 <code>.got.plt</code> 段相关项，调用 foo() 函数</li>
+<li>16eb: 跳转到符号解析和重定位流程，将 foo() 的进程内地址填入相对地址 0x3910，最后调用 foo() 函数</li>
 </ul>
 </li>
 </ul>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">objdump -d libtest.so</span><br><span class="line"></span><br><span class="line">0000000000001660 &lt;_Z4testv&gt;:</span><br><span class="line">    1660:       55                      push   %rbp</span><br><span class="line">    1661:       48 89 e5                mov    %rsp,%rbp</span><br><span class="line">    1664:       e8 77 00 00 00          callq  16e0 &lt;_Z3foov@plt&gt;</span><br><span class="line">    1669:       5d                      pop    %rbp    </span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">0000000000001670 &lt;_Z3foov&gt;:</span><br><span class="line">    1670:       55                      push   %rbp</span><br><span class="line">    1671:       48 89 e5                mov    %rsp,%rbp</span><br><span class="line">    1674:       b8 01 00 00 00          mov    $0x1,%eax</span><br><span class="line">    1679:       5d                      pop    %rbp</span><br><span class="line">    167a:       c3                      retq</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">00000000000016e0 &lt;_Z3foov@plt&gt;:</span><br><span class="line">    16e0:       ff 25 2a 22 00 00       jmpq   *0x222a(%rip)        # 3910 &lt;_Z3foov@@Base+0x22a0&gt;</span><br><span class="line">    16e6:       68 02 00 00 00          pushq  $0x2</span><br><span class="line">    16eb:       e9 c0 ff ff ff          jmpq   16b0 &lt;_fini+0x18&gt;        </span><br><span class="line">...    </span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">objdump -d libtest.so</span><br><span class="line"></span><br><span class="line">0000000000001660 &lt;_Z4testv&gt;:</span><br><span class="line">    1660:       55                      push   %rbp</span><br><span class="line">    1661:       48 89 e5                mov    %rsp,%rbp</span><br><span class="line">    1664:       e8 77 00 00 00          callq  16e0 &lt;_Z3foov@plt&gt;</span><br><span class="line">    1669:       5d                      pop    %rbp    </span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">0000000000001670 &lt;_Z3foov&gt;:</span><br><span class="line">    1670:       55                      push   %rbp</span><br><span class="line">    1671:       48 89 e5                mov    %rsp,%rbp</span><br><span class="line">    1674:       b8 01 00 00 00          mov    $0x1,%eax</span><br><span class="line">    1679:       5d                      pop    %rbp</span><br><span class="line">    167a:       c3                      retq</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">00000000000016e0 &lt;/&gt;:</span><br><span class="line">    16e0:       ff 25 2a 22 00 00       jmpq   *0x222a(%rip)        # 3910 &lt;_Z3foov@@Base+0x22a0&gt;</span><br><span class="line">    16e6:       68 02 00 00 00          pushq  $0x2</span><br><span class="line">    16eb:       e9 c0 ff ff ff          jmpq   16b0 &lt;_fini+0x18&gt;        </span><br><span class="line">...    </span><br></pre></td></tr></table></figure>
 
 <ul>
 <li>载入 libtest.so 符号表时，foo 函数符号无法注册到全局符号表</li>
@@ -419,9 +439,9 @@
 </ul>
 <hr>
 <p>交换库链接顺序或者只链接 libtest.so 时也是同样原理，main 程序中 foo 函数符号被编译器决议成为未定义（U类），加载 libtest.so 时注册到全局符号表。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">nm -CD main</span><br><span class="line"></span><br><span class="line">0000000000201990 T _fini</span><br><span class="line">                 w __gmon_start__</span><br><span class="line">0000000000201974 T _init</span><br><span class="line">                 w _ITM_deregisterTMCloneTable</span><br><span class="line">                 w _ITM_registerTMCloneTable</span><br><span class="line">                 U __libc_start_main</span><br><span class="line">                 U printf</span><br><span class="line">                 U scanf</span><br><span class="line">                 U foo()</span><br><span class="line">                 U test()</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">nm -CD main</span><br><span class="line"></span><br><span class="line">0000000000201880 T _fini</span><br><span class="line">                 w __gmon_start__</span><br><span class="line">0000000000201864 T _init</span><br><span class="line">                 w _ITM_deregisterTMCloneTable</span><br><span class="line">                 w _ITM_registerTMCloneTable</span><br><span class="line">                 U __libc_start_main</span><br><span class="line">                 U printf</span><br><span class="line">                 U foo()</span><br><span class="line">                 U test()</span><br></pre></td></tr></table></figure>
 
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">0000000000202540 &lt;main&gt;:</span><br><span class="line">...</span><br><span class="line">  202548:       e8 e3 0b 00 00          callq  203130 &lt;_Z3foov@plt&gt;</span><br><span class="line">...</span><br><span class="line">  202574:       e8 d7 0b 00 00          callq  203150 &lt;_Z4testv@plt&gt;</span><br><span class="line">...  </span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line">00000000002017b0 &lt;main&gt;:</span><br><span class="line">...</span><br><span class="line">  2017b8:       e8 03 01 00 00          callq  2018c0 &lt;_Z3foov@plt&gt;</span><br><span class="line">...</span><br><span class="line">  2017c0:       e8 0b 01 00 00          callq  2018d0 &lt;_Z4testv@plt&gt;</span><br><span class="line">...  </span><br></pre></td></tr></table></figure>
 
 <h3 id="解决符号冲突"><a href="#解决符号冲突" class="headerlink" title="解决符号冲突"></a>解决符号冲突</h3><p>为避免符号冲突，可通过以下几种方式</p>
 <h4 id="显式加载（运行时加载）"><a href="#显式加载（运行时加载）" class="headerlink" title="显式加载（运行时加载）"></a>显式加载（运行时加载）</h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// main2.cpp</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;dlfcn.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span><span class="string">&lt;assert.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">foo</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="type">void</span> *handle = <span class="built_in">dlopen</span>(<span class="string">&quot;./libtest.so&quot;</span>,RTLD_LAZY); <span class="built_in">assert</span>(handle);</span><br><span class="line">    <span class="built_in">int</span> (*test)() = (<span class="built_in">int</span> (*)())<span class="built_in">dlsym</span>(handle,<span class="string">&quot;_Z4testv&quot;</span>); <span class="built_in">assert</span>(test);</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;%d,%d\n&quot;</span>, <span class="built_in">foo</span>(), <span class="built_in">test</span>());</span><br><span class="line">    <span class="built_in">dlclose</span>(handle);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
@@ -450,11 +470,8 @@
 <p>foo() 对外不可见；此时 test() 调用 foo() 为模块内调用，无需通过 PLT；</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">objdump -d libtest.so</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line">0000000000001620 &lt;_Z4testv&gt;:</span><br><span class="line">    1620:       55                      push   %rbp</span><br><span class="line">    1621:       48 89 e5                mov    %rsp,%rbp</span><br><span class="line">    1624:       e8 07 00 00 00          callq  1630 &lt;_Z3foov&gt;</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
 
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">nm -C libtest.so</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line">0000000000001630 t foo()</span><br><span class="line">0000000000001620 T test()</span><br><span class="line">...</span><br><span class="line"> </span><br></pre></td></tr></table></figure>
-
-<h2 id="替换动态库"><a href="#替换动态库" class="headerlink" title="替换动态库"></a>替换动态库</h2><p>如果 so 正在被使用时，执行 <code>cp $&#123;newlib&#125;.so $&#123;oldlib&#125;.so</code>，则容易引起程序 core dump。</p>
-<p>主要原因：</p>
-<ul>
+<h2 id="替换动态库"><a href="#替换动态库" class="headerlink" title="替换动态库"></a>替换动态库</h2><h3 id="案例（2）"><a href="#案例（2）" class="headerlink" title="案例（2）"></a>案例（2）</h3><p>如果 so 正在被使用时，执行 <code>cp $&#123;newlib&#125;.so $&#123;oldlib&#125;.so</code>，则容易引起程序 core dump。</p>
+<h3 id="分析（2）"><a href="#分析（2）" class="headerlink" title="分析（2）"></a>分析（2）</h3><ul>
 <li>应用程序加载动态库时，内核通过 mmap 把 so 加载到进程地址空间，对应 <code>Virtual memory area (VMA)</code> 中多个 <code>页（Page）</code><ul>
 <li>相同 Inode 的 so 可被不同程序共享页缓存</li>
 <li><a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man8/ld.so.8.html">dynamic linker&#x2F;loader</a> 会把 so 里面引用的外部符号按照上文所述步骤进行解析和重定位</li>
@@ -462,13 +479,14 @@
 </li>
 <li>当 so 被 <code>cp</code> 以 truncate 模式覆盖时，内核会把 so 文件在虚拟内存页清除掉</li>
 <li>运行到 so 里面的代码时，因为虚拟内存页已被清除，会产生一次缺页中断</li>
-<li>缺页中断会导致内核从 so 文件中拷贝对应的页到内存中，<strong>so 地址范围内的数据部分也会替换为原始值，GOT &#x2F; PLT 相关因此丢失重定位信息</strong></li>
-<li>前后 so 不一样，则行为不可知<ul>
+<li>缺页中断会导致内核从 so 文件中拷贝对应的页到内存中，<strong>so 地址范围内的数据相关表段也会替换为原始值，GOT &#x2F; PLT 相关因此丢失重定位信息</strong></li>
+<li>前后 so 不一样，则逻辑执行结果不可知<ul>
 <li>例如需要的访问的地址偏移大于新的 so 的地址范围，就会产生 <code>bus erro</code></li>
+<li>访问异常地址则会引起 Segmentation fault</li>
 </ul>
 </li>
 <li>前后 so 文件完全一致：<ul>
-<li>如果调用到依赖外部符号的逻辑，但此时外部符号并没有经过重新解析，直接使用 <code>.got</code> &#x2F; <code>.got.plt</code> 段数据，则引起 Segmentation fault</li>
+<li>如果调用到依赖外部符号的逻辑，但此时外部符号并没有经过重新解析，直接使用 <code>.got</code> &#x2F; <code>.got.plt</code> 段数据，则会引起 Segmentation fault</li>
 <li>如果调用的逻辑没有依赖外部符号<ul>
 <li>如果逻辑依赖 <code>.data</code> &#x2F; <code>.bss</code> 段等数据部分，则会因为数据被替换而引发异常</li>
 <li>如果逻辑没有其他依赖，则可正常运行</li>
@@ -480,12 +498,29 @@
 <hr>
 <p>为什么系统会阻止 <code>cp</code> 覆盖可执行程序，而不阻止覆盖 so 文件？</p>
 <ul>
-<li>操作系统的 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Demand_paging">Demand Paging</a> 机制下，程序运行时并不会将所有 Page 都加载到内存中，而只有在系统有访问需求时才将其加载</li>
-<li>要求正在运行中的程序镜像（并非文件本身）不被意外修改，因此内核在启动程序后会锁定这个程序镜像的 Inode。</li>
-<li>so 文件是靠 ld.so 加载的，属于用户态程序，没有权利去锁定 Inode。</li>
+<li>操作系统的 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Demand_paging">Demand Paging</a> 机制下，加载程序时也同上文一样映射 VMA，有访存需求时才加载相关页。</li>
+<li>为防止正在运行中的程序镜像（并非文件本身）被意外修改，因此内核在启动程序后会锁定这个程序镜像的 Inode。</li>
+<li>so 文件是靠 ld.so 加载的，属于用户态程序，没有权限锁定 Inode。</li>
 </ul>
 <hr>
 <p><strong>结合上述内容，替换动态库时，必须先执行系统调用 <code>unlink*</code> 删除目标文件。因此禁止直接使用 <code>cp</code>，可选 <code>install</code>、<code>rm + cp</code> 等</strong></p>
+<h2 id="动态库性能开销"><a href="#动态库性能开销" class="headerlink" title="动态库性能开销"></a>动态库性能开销</h2><p><a href="#%E5%88%86%E6%9E%90%EF%BC%881%EF%BC%89">分析（1）</a> 中已基本描述了加载动态库和调用动态库内函数的流程。除此之外，动态库使用外部变量和全局变量时也有额外的寻址开销。</p>
+<h3 id="案例分析（3）"><a href="#案例分析（3）" class="headerlink" title="案例分析（3）"></a>案例分析（3）</h3><p>全局变量 <code>k</code> 和外部变量 <code>g</code> 的访问方式相同，需要读 GOT，例如 poo() 中的步骤为：</p>
+<ul>
+<li>1754: 读取 <code>rip</code> 寄存器中下个指令的实际内存地址，加上 <code>g</code> 在 GOT 中对应项的偏移地址 0x1275，读取并保存至 <code>rax</code> 寄存器</li>
+<li>175b: 根据 rax 寄存器中的值寻址取值保存至 eax</li>
+</ul>
+<p>静态局部变量 <code>goo()::c</code> 的访问则无需 GOT：</p>
+<ul>
+<li>1734:  通过 rip 和偏移地址直接获取 <code>goo()::c</code> 在当前进程内存空间中的值至 <code>eax</code> 寄存器</li>
+<li>动态库内访问静态变量，与使用静态链接库时是一样的 8b 类型的 mov 指令，性能上差距微乎其微</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">// libtest3.cpp</span><br><span class="line">int k=123;</span><br><span class="line">int foo()&#123;return k++;&#125;</span><br><span class="line">int goo()&#123;static int c=234;return c++;&#125;</span><br><span class="line">extern int g;</span><br><span class="line">int poo()&#123;return g++;&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line">clang++ -fPIC libtest3.cpp -shared -o libtest3.so</span><br><span class="line"></span><br><span class="line">nm -CD libtest3.so</span><br><span class="line"></span><br><span class="line">                 w __cxa_finalize</span><br><span class="line">000000000000178c T _fini</span><br><span class="line">                 U g</span><br><span class="line">                 w __gmon_start__</span><br><span class="line">0000000000001770 T _init</span><br><span class="line">                 w _ITM_deregisterTMCloneTable</span><br><span class="line">                 w _ITM_registerTMCloneTable</span><br><span class="line">00000000000039d8 D k</span><br><span class="line">0000000000001710 T foo()</span><br><span class="line">0000000000001730 T goo()</span><br><span class="line">0000000000001750 T poo()    </span><br><span class="line"></span><br><span class="line">objdump -d libtest3.so</span><br><span class="line"></span><br><span class="line">0000000000001710 &lt;_Z3foov&gt;:</span><br><span class="line">    1710:       55                      push   %rbp</span><br><span class="line">    1711:       48 89 e5                mov    %rsp,%rbp</span><br><span class="line">    1714:       48 8b 05 ad 12 00 00    mov    0x12ad(%rip),%rax        # 29c8 &lt;k@@Base-0x1010&gt;</span><br><span class="line">    171b:       8b 00                   mov    (%rax),%eax</span><br><span class="line">    171d:       89 c2                   mov    %eax,%edx</span><br><span class="line">    171f:       83 c2 01                add    $0x1,%edx</span><br><span class="line">    1722:       48 8b 0d 9f 12 00 00    mov    0x129f(%rip),%rcx        # 29c8 &lt;k@@Base-0x1010&gt;</span><br><span class="line">    1729:       89 11                   mov    %edx,(%rcx)</span><br><span class="line">    172b:       5d                      pop    %rbp</span><br><span class="line">    172c:       c3                      retq</span><br><span class="line">    172d:       0f 1f 00                nopl   (%rax)</span><br><span class="line"></span><br><span class="line">0000000000001730 &lt;_Z3goov&gt;:</span><br><span class="line">    1730:       55                      push   %rbp</span><br><span class="line">    1731:       48 89 e5                mov    %rsp,%rbp</span><br><span class="line">    1734:       8b 05 a2 22 00 00       mov    0x22a2(%rip),%eax        # 39dc &lt;_ZZ3goovE1c&gt;</span><br><span class="line">    173a:       89 c1                   mov    %eax,%ecx</span><br><span class="line">    173c:       83 c1 01                add    $0x1,%ecx</span><br><span class="line">    173f:       89 0d 97 22 00 00       mov    %ecx,0x2297(%rip)        # 39dc &lt;_ZZ3goovE1c&gt;</span><br><span class="line">    1745:       5d                      pop    %rbp</span><br><span class="line">    1746:       c3                      retq</span><br><span class="line">    1747:       66 0f 1f 84 00 00 00    nopw   0x0(%rax,%rax,1)</span><br><span class="line">    174e:       00 00</span><br><span class="line"></span><br><span class="line">0000000000001750 &lt;_Z3poov&gt;:</span><br><span class="line">    1750:       55                      push   %rbp</span><br><span class="line">    1751:       48 89 e5                mov    %rsp,%rbp</span><br><span class="line">    1754:       48 8b 05 75 12 00 00    mov    0x1275(%rip),%rax        # 29d0 &lt;g@Base&gt;</span><br><span class="line">    175b:       8b 00                   mov    (%rax),%eax</span><br><span class="line">    175d:       89 c2                   mov    %eax,%edx</span><br><span class="line">    175f:       83 c2 01                add    $0x1,%edx</span><br><span class="line">    1762:       48 8b 0d 67 12 00 00    mov    0x1267(%rip),%rcx        # 29d0 &lt;g@Base&gt;</span><br><span class="line">    1769:       89 11                   mov    %edx,(%rcx)</span><br><span class="line">    176b:       5d                      pop    %rbp</span><br><span class="line">    176c:       c3                      retq</span><br></pre></td></tr></table></figure>
+
+<hr>
+<p>通常来说动态库需尽量少使用外部变量和全局变量，以获得更好的隔离性，减少符号依赖风险，所以一般情况下讨论动态库的性能损耗着重于跨模块函数调用。但绝大多数实际应用层面，这些开销基本可以忽略。</p>
 <h1 id="TODO"><a href="#TODO" class="headerlink" title="TODO"></a>TODO</h1><p>未完待续</p>
 
     </div>
