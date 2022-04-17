@@ -313,7 +313,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-04-16 22:15:29" itemprop="dateModified" datetime="2022-04-16T22:15:29+08:00">2022-04-16</time>
+      <time title="Modified: 2022-04-17 22:39:41" itemprop="dateModified" datetime="2022-04-17T22:39:41+08:00">2022-04-17</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -335,16 +335,14 @@
     
     
     <div class="post-body" itemprop="articleBody">
-          <p>PingCAP（aka <code>贵司</code>）自研了套部署工具 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiup">TiUP</a> 来取代早前使用的重型部署工具 <a target="_blank" rel="noopener" href="https://github.com/ansible/ansible">Ansible</a>。实际使用过程中，有多次出现在打 patch 滚动重启过程中，TiFlash 节点行为不符合预期。后来发现，TiUP 打 patch 过程中，没有停进程且是直接 <code>tar</code> 命令解压覆盖部署目录，原子性保障更是无从谈起。</p>
-<p>v6.0 版本前 TiFlash 的部分模块包含动态加载 <code>共享库</code>（aka <code>动态库</code>）的行为，这类行为会被搜索路径下的文件影响。如果存在某个时刻引入的二进制库不兼容，则直接影响程序的行为。</p>
-<p>因为是用 <code>tar</code> 命令解压覆盖，反而是没有出现老生常谈的 <code>cp</code> 覆盖动态库引起 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Segmentation_fault">Segmentation fault</a> 的问题。</p>
-<p>在此整理下相关的问题：</p>
+          <p>PingCAP（aka <code>贵司</code>）自研了套部署工具 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiup">TiUP</a> 来取代早前使用的重型部署工具 <a target="_blank" rel="noopener" href="https://github.com/ansible/ansible">Ansible</a>。然而实际使用时，TiFlash 节点在打 patch 过程中出现过不符合预期的报错。后来发现，TiUP 打 patch 的操作并没有停进程，而是直接 <code>tar</code> 命令解压覆盖部署目录，原子性保障也是无从谈起。v6.0 版本前 TiFlash 部分模块包含动态加载 <code>共享库</code>（aka <code>动态库</code>）的行为，这类行为会被搜索路径下的文件影响。如果存在某个时刻引入的目标文件相互不兼容，则直接影响程序的行为。</p>
+<p>因为是用 <code>tar</code> 命令解压覆盖，反而没有出现老生常谈的 <code>cp</code> 覆盖动态库引起 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Segmentation_fault">Segmentation fault</a> 的问题。</p>
+<p>正好借此整理下相关的几个问题：</p>
 <ul>
 <li>cp &#x2F; tar 命令是如何工作的？</li>
 <li>cp 覆盖正在被使用的动态库为何会引发异常？</li>
-<li>调用动态库内函数为何会产生不符合直觉的行为？</li>
-<li>动态库性能开销有多大？</li>
 <li>使用动态库要避开哪些坑？</li>
+<li>动态库有哪些额外的开销？</li>
 </ul>
           <!--noindex-->
             <div class="post-button">
