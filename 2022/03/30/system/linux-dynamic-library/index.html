@@ -28,7 +28,7 @@
 <meta property="og:description" content="PingCAP（aka 贵司）自研了套部署工具 TiUP 来取代早前使用的重型部署工具 Ansible。然而实际使用时，TiFlash 节点在打 patch 过程中出现过不符合预期的报错。后来发现，TiUP 打 patch 的操作并没有停进程，而是直接 tar 命令解压覆盖部署目录，原子性保障也是无从谈起。v6.0 版本前 TiFlash 部分模块包含动态加载 共享库（aka 动态库）的行为，这类">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2022-03-30T08:04:36.000Z">
-<meta property="article:modified_time" content="2022-04-18T05:49:53.788Z">
+<meta property="article:modified_time" content="2022-04-19T08:50:48.013Z">
 <meta property="article:author" content="Zhigao Tong">
 <meta property="article:tag" content="PingCAP">
 <meta property="article:tag" content="Linux">
@@ -235,7 +235,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-04-18 13:49:53" itemprop="dateModified" datetime="2022-04-18T13:49:53+08:00">2022-04-18</time>
+      <time title="Modified: 2022-04-19 16:50:48" itemprop="dateModified" datetime="2022-04-19T16:50:48+08:00">2022-04-19</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -257,7 +257,7 @@
     
     
     <div class="post-body" itemprop="articleBody">
-        <p>PingCAP（aka <code>贵司</code>）自研了套部署工具 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiup">TiUP</a> 来取代早前使用的重型部署工具 <a target="_blank" rel="noopener" href="https://github.com/ansible/ansible">Ansible</a>。然而实际使用时，TiFlash 节点在打 patch 过程中出现过不符合预期的报错。后来发现，TiUP 打 patch 的操作并没有停进程，而是直接 <code>tar</code> 命令解压覆盖部署目录，原子性保障也是无从谈起。v6.0 版本前 TiFlash 部分模块包含动态加载 <code>共享库</code>（aka <code>动态库</code>）的行为，这类行为会被搜索路径下的文件影响。如果存在某个时刻引入的目标文件相互不兼容，则直接影响程序的行为。</p>
+        <p>PingCAP（aka <code>贵司</code>）自研了套部署工具 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiup">TiUP</a> 来取代早前使用的重型部署工具 <a target="_blank" rel="noopener" href="https://github.com/ansible/ansible">Ansible</a>。然而实际使用时，TiFlash 节点在打 patch 过程中出现过不符合预期的报错。后来发现，TiUP 打 patch 的操作并没有停进程，而是直接 <code>tar</code> 命令解压覆盖部署目录，原子性保障也是无从谈起。v6.0 版本前 TiFlash 部分模块包含动态加载 <code>共享库</code>（aka <code>动态库</code>）的行为，这类行为会被搜索路径下的文件影响。如果存在某个时刻引入的模块相互不兼容，则直接影响程序的行为。</p>
 <p>因为是用 <code>tar</code> 命令解压覆盖，反而没有出现老生常谈的 <code>cp</code> 覆盖动态库引起 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Segmentation_fault">Segmentation fault</a> 的问题。</p>
 <p>正好借此整理下相关的几个问题：</p>
 <ul>
@@ -282,7 +282,7 @@
 <p>Inode 在不同盘中互不依赖，存在 2 个不同盘上文件 Inode 号码相同的情况。</p>
 <hr>
 <p>通过 Inode 号码直接 直接删除 Inode 节点，等同于删除文件</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">ls -i</span><br><span class="line"></span><br><span class="line"> 134610994 anaconda-post.log  1320256620 dev   134611301 home   134611303 lib64   146932813 misc   148638932 opt    148768809 root   134611337 sbin           1 sys   148768954 usr</span><br><span class="line"> 134610995 bin		       148635658 etc   134611302 lib    134611304 media   134611305 mnt            1 proc   148768952 run    134611338 srv    148768953 tmp   148772892 var</span><br><span class="line"></span><br><span class="line">find . -inum 134610994 -delet</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">ls -i</span><br><span class="line"></span><br><span class="line"> 134610994 anaconda-post.log  1320256620 dev   134611301 home   134611303 lib64   146932813 misc   148638932 opt    148768809 root   134611337 sbin           1 sys   148768954 usr</span><br><span class="line"> 134610995 bin		       148635658 etc   134611302 lib    134611304 media   134611305 mnt            1 proc   148768952 run    134611338 srv    148768953 tmp   148772892 var</span><br><span class="line"></span><br><span class="line">find . -inum 134610994 -delete</span><br></pre></td></tr></table></figure>
 
 <p>当文件被删除后，Inode 会被系统回收分配给其他文件</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">touch x</span><br><span class="line">ls -i x</span><br><span class="line"></span><br><span class="line">122162998 x</span><br><span class="line"></span><br><span class="line">cp x y</span><br><span class="line">ls -i y</span><br><span class="line"></span><br><span class="line">122163059 y</span><br><span class="line"></span><br><span class="line">rm x</span><br><span class="line">ls -i x</span><br><span class="line"></span><br><span class="line">ls: cannot access x: No such file or directory</span><br><span class="line"></span><br><span class="line">cp y z</span><br><span class="line">ls -i z</span><br><span class="line"></span><br><span class="line">122162998 z</span><br></pre></td></tr></table></figure>
@@ -299,7 +299,7 @@
 
 <hr>
 <p>硬链接的目标和源共用同个 Inode，因此不能跨盘建立，否则报错 <code>Invalid cross-device link</code>。通过 <code>ln $&#123;src&#125; $&#123;tar&#125;</code> 建立硬链接无法作用于目录，否则报错 <code>hard link not allowed for directory</code>。</p>
-<p>与硬链接不同，软链接自身就是一个独立的二进制文件，每次使用时再利用文件系统解析到对应的目标，如果失败则会返回错误。也就意味着软链接不会对文件系统本身产生侵入性影响。</p>
+<p>与硬链接不同，软链接就是个独立的二进制文件，每次使用时再利用文件系统解析到对应的目标，如果失败则会返回错误。也就意味着软链接不会对文件系统本身产生侵入性影响。</p>
 <p>硬链接自身就是文件系统中的一环，链接数归 0 后系统才会尝试回收对应的文件，与引用计数的管理策略类似。如果目录可以建立硬链接，则容易造成循环引用，导致文件无法回收。</p>
 <h2 id="cp-x2F-rm-x2F-mv-x2F-tar-命令"><a href="#cp-x2F-rm-x2F-mv-x2F-tar-命令" class="headerlink" title="cp&#x2F;rm&#x2F;mv&#x2F;tar 命令"></a>cp&#x2F;rm&#x2F;mv&#x2F;tar 命令</h2><p>用 <code>strace</code> 可以很清楚地看到命令执行时的系统调用。通常来说 <code>rm</code> 主要用到 <code>unlink*</code>，<code>mv</code> 主要用到 <code>rename*</code>，<code>cp</code> 主要用到 <code>open</code>、<code>read</code>、<code>write</code>。</p>
 <p>根据 <a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man2/unlink.2.html">linux&#x2F;man-pages&#x2F;unlink</a>，<code>unlink</code> 用于按照文件名删除文件：</p>
@@ -314,11 +314,11 @@
 <li>如果是跨盘行为，则报错 <code>Invalid cross-device link</code></li>
 <li>跨盘 <code>mv</code> 命令会忽略报错，通过 unlink 删除目标文件，新建文件后复制内容，最后 unlink 删除源文件</li>
 </ul>
-<p>当目标文件已存在，<code>cp</code> 命令调用 open 的参数会包含 <code>O_TRUNC</code>（truncate 模式），<strong>复用目标文件 Inode</strong>，清空内容，把源文件内容写入目标文件。当程序正在运行时，调用 <code>cp</code> 尝试覆盖其二进制文件，会报错 <code>Text file busy</code>，这缘于操作系统的保护机制，详见 <a href="#%E6%A1%88%E4%BE%8B%EF%BC%882%EF%BC%89">案例（2）</a>。如果使用 <code>cp -f</code> 进行覆盖则会忽略报错，并执行 unlink 后再复制，<strong>前后 Inode 已经发生改变</strong>，属于安全行为。</p>
+<p>根据 <a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man2/open.2.html">linux&#x2F;man-pages&#x2F;open</a>，当目标文件已存在，<code>cp</code> 命令调用 open 的参数会包含 <code>O_TRUNC</code>（即 truncate 模式），<strong>复用目标文件的 Inode</strong>，清空内容，把源文件内容写入目标文件。当程序正在运行时，调用 <code>cp</code> 尝试覆盖其二进制文件，会报错 <code>Text file busy</code>（但 cp 覆盖正在被使用的共享库则不然），这缘于操作系统的保护机制，详见 <a href="#%E6%A1%88%E4%BE%8B%EF%BC%882%EF%BC%89">案例（2）</a>。如果使用 <code>cp -f</code> 进行覆盖则会忽略报错，并执行 unlink 后再复制，<strong>前后 Inode 已经发生改变</strong>，属于安全行为。</p>
 <p>追踪 <code>tar</code> 命令的执行过程，可以看到当目标文件已存在时，是 unlink 删除后再新建并复制写入。因此通过 tar 命令覆盖正在被使用的文件也是安全的。</p>
 <h1 id="Linux-动态库"><a href="#Linux-动态库" class="headerlink" title="Linux 动态库"></a>Linux 动态库</h1><p>强烈推荐 <a target="_blank" rel="noopener" href="https://book.douban.com/subject/3652388/">《程序员的自我修养——链接装载与库》</a> 这本书，细致全面地囊括了各项相关知识。</p>
 <p>Linux 下的库有两种：<code>静态库</code> 和 <code>共享库（aka 动态库）</code>，静态通常用 <code>.a</code> 为后缀，动态库用 <code>.so</code> 为后缀。</p>
-<p>Linux 下动态库、静态库、可执行文件的格式均 <code>ELF（Executable Linkable Format）</code>，可通过 <code>file</code> 命令查看其具体类型细节。使用 <code>ldd</code> 工具，查看目标文件依赖的动态库。</p>
+<p>Linux 下动态库、静态库、可执行文件的格式均 <code>ELF（Executable Linkable Format）</code>，可通过 <code>file</code> 命令查看其具体类型细节。使用 <code>ldd</code> 工具，查看 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Object_file">Object file（对象文件）</a> 依赖的动态库。</p>
 <p>动态库的优势：</p>
 <ul>
 <li>不同的应用程序如果调用相同的库，那么在内存里只需要有一份该共享库的实例</li>
@@ -329,11 +329,11 @@
 <p>动态库的劣势：</p>
 <ul>
 <li>访问全局数据｜静态数据成员、跨模块函数调用等行为需要额外的定位寻址开销，造成性能损耗</li>
-<li>模块兼容性问题，DDL hell</li>
+<li>模块兼容性问题：DDL hell</li>
 </ul>
 <p>静态链接的过程主要包括：地址和空间分配（Address and Storage Allocation）、符号决议（Symbol Resolution，aka 符号绑定）、重定位（Relocation）等。</p>
-<p>链接相关概念中，函数和变量统称为 <code>符号（Symbol）</code>，函数名或变量名就是符号名。每个目标文件都有一个 <code>符号表（Symbol Table）</code>，表中记录了目标文件用到的所有符号。</p>
-<p>使用 <code>nm</code> 命令查看目标文件的符号信息，<a target="_blank" rel="noopener" href="https://linux.die.net/man/1/nm">nm(1) - Linux man page</a>，符号类型主要包括：</p>
+<p>链接相关概念中，函数和变量统称为 <code>符号（Symbol）</code>，函数名或变量名就是符号名。每个对象文件都有一个 <code>符号表（Symbol Table）</code>，表中记录了对象文件用到的所有符号。</p>
+<p>使用 <code>nm</code> 命令查看对象文件的符号信息，<a target="_blank" rel="noopener" href="https://linux.die.net/man/1/nm">nm(1) - Linux man page</a>，符号类型主要包括：</p>
 <ul>
 <li>T &#x2F; t：代码段中的函数</li>
 <li>U：被调用但并没有定义的符号（表明需要其他库支持）</li>
@@ -343,7 +343,7 @@
 <li>…</li>
 </ul>
 <hr>
-<p>目标文件将不同属性的信息分<code>段（Segment）</code> 存储，可用 <code>objdump</code> 或 <code>readelf</code> 工具导出相关信息：</p>
+<p>对象文件将不同属性的信息分<code>段（Segment）</code> 存储，可用 <code>objdump</code> 或 <code>readelf</code> 工具导出相关信息：</p>
 <ul>
 <li><code>.dynsym</code> 未定义分配的符号表</li>
 <li><code>.rel.dyn</code> 加载时需要重定位的变量</li>
@@ -353,7 +353,7 @@
 <li><code>.data</code> 已初始化的全局变量和局部静态变量</li>
 <li><code>.bss</code> 未初始化的全局变量和局部静态变量</li>
 <li><code>.symtab</code> 全量符号表</li>
-<li><code>.got</code> 外部全局变量和局部静态变量地址表</li>
+<li><code>.got</code> 外部全局变量地址表</li>
 <li><code>.got.plt</code> 外部函数地址表</li>
 <li>…</li>
 </ul>
