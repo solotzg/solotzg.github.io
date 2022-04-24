@@ -28,13 +28,14 @@
 <meta property="og:description" content="PingCAP（aka 贵司）自研了套部署工具 TiUP 来取代早前使用的重型部署工具 Ansible。然而实际使用时，TiFlash 节点在打 patch 过程中出现过不符合预期的报错。后来发现，TiUP 打 patch 的操作并没有停进程，而是直接 tar 命令解压覆盖部署目录，原子性保障也是无从谈起。v6.0 版本前 TiFlash 部分模块包含动态加载 共享库（aka 动态库）的行为，这类">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2022-03-30T08:04:36.000Z">
-<meta property="article:modified_time" content="2022-04-22T10:01:34.340Z">
+<meta property="article:modified_time" content="2022-04-24T09:00:15.330Z">
 <meta property="article:author" content="Zhigao Tong">
 <meta property="article:tag" content="PingCAP">
 <meta property="article:tag" content="Linux">
 <meta property="article:tag" content="System">
 <meta property="article:tag" content="FileSystem">
 <meta property="article:tag" content="DynamicLibrary">
+<meta property="article:tag" content="Compiler">
 <meta name="twitter:card" content="summary">
 
 
@@ -125,7 +126,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
-            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Linux-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E5%9F%BA%E7%A1%80"><span class="nav-number">1.</span> <span class="nav-text">Linux 文件系统基础</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Inode"><span class="nav-number">1.1.</span> <span class="nav-text">Inode</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#cp-x2F-rm-x2F-mv-x2F-tar-%E5%91%BD%E4%BB%A4"><span class="nav-number">1.2.</span> <span class="nav-text">cp&#x2F;rm&#x2F;mv&#x2F;tar 命令</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Linux-%E5%8A%A8%E6%80%81%E5%BA%93"><span class="nav-number">2.</span> <span class="nav-text">Linux 动态库</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%93%BE%E6%8E%A5%E5%8A%A8%E6%80%81%E5%BA%93"><span class="nav-number">2.1.</span> <span class="nav-text">链接动态库</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%881%EF%BC%89"><span class="nav-number">2.1.1.</span> <span class="nav-text">案例（1）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%86%E6%9E%90%EF%BC%881%EF%BC%89"><span class="nav-number">2.1.2.</span> <span class="nav-text">分析（1）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A3%E5%86%B3%E7%AC%A6%E5%8F%B7%E5%86%B2%E7%AA%81"><span class="nav-number">2.1.3.</span> <span class="nav-text">解决符号冲突</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%98%BE%E5%BC%8F%E5%8A%A0%E8%BD%BD%EF%BC%88%E8%BF%90%E8%A1%8C%E6%97%B6%E5%8A%A0%E8%BD%BD%EF%BC%89"><span class="nav-number">2.1.3.1.</span> <span class="nav-text">显式加载（运行时加载）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%AC%A6%E5%8F%B7%E9%9A%90%E8%97%8F"><span class="nav-number">2.1.3.2.</span> <span class="nav-text">符号隐藏</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9B%BF%E6%8D%A2%E5%8A%A8%E6%80%81%E5%BA%93"><span class="nav-number">2.2.</span> <span class="nav-text">替换动态库</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%882%EF%BC%89"><span class="nav-number">2.2.1.</span> <span class="nav-text">案例（2）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%86%E6%9E%90%EF%BC%882%EF%BC%89"><span class="nav-number">2.2.2.</span> <span class="nav-text">分析（2）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8A%A8%E6%80%81%E5%BA%93%E6%80%A7%E8%83%BD%E5%BC%80%E9%94%80"><span class="nav-number">2.3.</span> <span class="nav-text">动态库性能开销</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%883%EF%BC%89"><span class="nav-number">2.3.1.</span> <span class="nav-text">案例（3）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B1%E4%BA%AB%E5%BA%93%E5%85%BC%E5%AE%B9%E6%80%A7"><span class="nav-number">2.4.</span> <span class="nav-text">共享库兼容性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%884%EF%BC%89"><span class="nav-number">2.4.1.</span> <span class="nav-text">案例（4）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%885%EF%BC%89"><span class="nav-number">2.4.2.</span> <span class="nav-text">案例（5）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%886%EF%BC%89"><span class="nav-number">2.4.3.</span> <span class="nav-text">案例（6）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%86%E6%9E%90%EF%BC%886%EF%BC%89"><span class="nav-number">2.4.4.</span> <span class="nav-text">分析（6）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#TODO"><span class="nav-number">3.</span> <span class="nav-text">TODO</span></a></li></ol></div>
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Linux-%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E5%9F%BA%E7%A1%80"><span class="nav-number">1.</span> <span class="nav-text">Linux 文件系统基础</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Inode"><span class="nav-number">1.1.</span> <span class="nav-text">Inode</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Inode-%E6%B7%B1%E5%85%A5%E5%88%86%E6%9E%90"><span class="nav-number">1.1.1.</span> <span class="nav-text">Inode 深入分析</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#cp-x2F-rm-x2F-mv-x2F-tar-%E5%91%BD%E4%BB%A4"><span class="nav-number">1.2.</span> <span class="nav-text">cp&#x2F;rm&#x2F;mv&#x2F;tar 命令</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Linux-%E5%8A%A8%E6%80%81%E5%BA%93"><span class="nav-number">2.</span> <span class="nav-text">Linux 动态库</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%93%BE%E6%8E%A5%E5%8A%A8%E6%80%81%E5%BA%93"><span class="nav-number">2.1.</span> <span class="nav-text">链接动态库</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%881%EF%BC%89"><span class="nav-number">2.1.1.</span> <span class="nav-text">案例（1）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%86%E6%9E%90%EF%BC%881%EF%BC%89"><span class="nav-number">2.1.2.</span> <span class="nav-text">分析（1）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A3%E5%86%B3%E7%AC%A6%E5%8F%B7%E5%86%B2%E7%AA%81"><span class="nav-number">2.1.3.</span> <span class="nav-text">解决符号冲突</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%98%BE%E5%BC%8F%E5%8A%A0%E8%BD%BD%EF%BC%88%E8%BF%90%E8%A1%8C%E6%97%B6%E5%8A%A0%E8%BD%BD%EF%BC%89"><span class="nav-number">2.1.3.1.</span> <span class="nav-text">显式加载（运行时加载）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%AC%A6%E5%8F%B7%E9%9A%90%E8%97%8F"><span class="nav-number">2.1.3.2.</span> <span class="nav-text">符号隐藏</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9B%BF%E6%8D%A2%E5%8A%A8%E6%80%81%E5%BA%93"><span class="nav-number">2.2.</span> <span class="nav-text">替换动态库</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%882%EF%BC%89"><span class="nav-number">2.2.1.</span> <span class="nav-text">案例（2）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%86%E6%9E%90%EF%BC%882%EF%BC%89"><span class="nav-number">2.2.2.</span> <span class="nav-text">分析（2）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8A%A8%E6%80%81%E5%BA%93%E6%80%A7%E8%83%BD%E5%BC%80%E9%94%80"><span class="nav-number">2.3.</span> <span class="nav-text">动态库性能开销</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%883%EF%BC%89"><span class="nav-number">2.3.1.</span> <span class="nav-text">案例（3）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B1%E4%BA%AB%E5%BA%93%E5%85%BC%E5%AE%B9%E6%80%A7"><span class="nav-number">2.4.</span> <span class="nav-text">共享库兼容性</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%884%EF%BC%89"><span class="nav-number">2.4.1.</span> <span class="nav-text">案例（4）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%885%EF%BC%89"><span class="nav-number">2.4.2.</span> <span class="nav-text">案例（5）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%886%EF%BC%89"><span class="nav-number">2.4.3.</span> <span class="nav-text">案例（6）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%86%E6%9E%90%EF%BC%886%EF%BC%89"><span class="nav-number">2.4.4.</span> <span class="nav-text">分析（6）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#TODO"><span class="nav-number">3.</span> <span class="nav-text">TODO</span></a></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -151,7 +152,7 @@
       </div>
       <div class="site-state-item site-state-tags">
           <a href="/tags/">
-        <span class="site-state-item-count">20</span>
+        <span class="site-state-item-count">21</span>
         <span class="site-state-item-name">tags</span></a>
       </div>
   </nav>
@@ -235,7 +236,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-04-22 18:01:34" itemprop="dateModified" datetime="2022-04-22T18:01:34+08:00">2022-04-22</time>
+      <time title="Modified: 2022-04-24 17:00:15" itemprop="dateModified" datetime="2022-04-24T17:00:15+08:00">2022-04-24</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -268,40 +269,93 @@
 </ul>
 <span id="more"></span>
 
-<h1 id="Linux-文件系统基础"><a href="#Linux-文件系统基础" class="headerlink" title="Linux 文件系统基础"></a>Linux 文件系统基础</h1><p>相关基础参考 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Modern_Operating_Systems">Modern Operating Systems</a>，深度细节建议看操作系统代码实现。</p>
-<h2 id="Inode"><a href="#Inode" class="headerlink" title="Inode"></a>Inode</h2><p>Linux 下 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Inode">Inode(Index node)</a> 是一个重要概念，是理解 Unix&#x2F;Linux 文件系统和硬盘储存的基础。Inode、软链接、硬链接 等相关基础可以参考 <a target="_blank" rel="noopener" href="https://www.ruanyifeng.com/blog/2011/12/inode.html">阮一峰. 理解inode</a>，解释得比较易懂。以下部分做点补充。</p>
+<h1 id="Linux-文件系统基础"><a href="#Linux-文件系统基础" class="headerlink" title="Linux 文件系统基础"></a>Linux 文件系统基础</h1><p>相关基础参考 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Modern_Operating_Systems">Modern Operating Systems</a>，<a target="_blank" rel="noopener" href="https://www.science.smith.edu/~nhowe/teaching/csc262/oldlabs/ext2.html">The Ext2 Filesystem</a>，<a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/filesystems/index.html">kernel.org&#x2F;doc&#x2F;filesystems</a>，深度细节建议看操作系统代码实现。</p>
+<h2 id="Inode"><a href="#Inode" class="headerlink" title="Inode"></a>Inode</h2><p>Linux 下 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Inode">Inode(Index node)</a> 是一个重要概念，是理解 Unix&#x2F;Linux 文件系统和硬盘储存的基础。Inode、软链接、硬链接 等入门基础可以参考 <a target="_blank" rel="noopener" href="https://www.ruanyifeng.com/blog/2011/12/inode.html">阮一峰. 理解inode</a>，解释得比较易懂。以下部分做点补充。</p>
 <hr>
 <p>Inode 本身是一种抽象设计，不同操作系统有各自实现，此处针对传统的类 Unix 文件系统。</p>
-<p>通过命令获取某块 3.6T 硬盘的 <code>Inode size</code> 值为 256</p>
-<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">dumpe2fs -h /dev/<span class="variable">$&#123;disk&#125;</span> | grep <span class="string">&quot;Inode size&quot;</span></span><br><span class="line"></span><br><span class="line">Inode size:               256</span><br></pre></td></tr></table></figure>
+<p>文件储存在硬盘上，硬盘的最小存储单位叫做 <code>扇区（Sector）</code>，每个扇区大小为 512B。操作系统存取文件的最小单位是 <code>块（Block）</code>，一般为连续 8 个扇区。文件数据存储在块中，Inode 则作为索引节点存储文件的元信息：Inode 号码，文件字节数、User ID、Group ID、读｜写｜执行权限、3 个时间戳（Inode 上次变动时间，文件数据上次变动时间，文件上次打开时间）、链接数（硬链接）、数据 Block 位置。详细定义可参考 <a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man7/inode.7.html">linux&#x2F;man-pages&#x2F;inode</a>。</p>
+<p>Inode 大小（通常为 256B）和数量在格式化时给定。通过命令获取某块 3.6T 硬盘的 <code>Inode size</code> 值为 256B，其 Inode 区存储上限是 233M。</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">dumpe2fs -h /dev/<span class="variable">$&#123;disk&#125;</span> | grep -E <span class="string">&quot;Inode size|Block size&quot;</span></span><br><span class="line"></span><br><span class="line">Block size:               4096</span><br><span class="line">Inode size:               256</span><br></pre></td></tr></table></figure>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">df</span> -hi /dev/<span class="variable">$&#123;disk&#125;</span></span><br><span class="line"></span><br><span class="line">Filesystem     Inodes IUsed IFree IUse% Mounted on</span><br><span class="line">....           233M    33M  201M   14%  ....</span><br></pre></td></tr></table></figure>
 
-<p>该硬盘的 Inode 存储上限是 233M。</p>
-<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">df</span> -hi /dev/<span class="variable">$&#123;disk&#125;</span></span><br><span class="line"></span><br><span class="line">Filesystem     Inodes IUsed IFree IUse% Mounted on</span><br><span class="line">xxxx           233M    33M  201M   14%  xxxx</span><br></pre></td></tr></table></figure>
-
-<p>可以推算出，该硬盘最多存储 954368 个 Inode。如果每个 Inode 对应一个 4K 大小的独立目录，总容量也不超过 3.65G。因此，确实会出现因 Inode 耗尽而无法创建文件的极端情况。</p>
-<p>Inode 在不同盘中互不依赖，存在 2 个不同盘上文件 Inode 号码相同的情况。</p>
-<hr>
-<p>通过 Inode 号码直接 直接删除 Inode 节点，等同于删除文件</p>
+<p>由此推算出，该硬盘最多存储 953888 个 Inode。假设每个 Inode 对应一个 4K 大小的独立目录，总容量也不超过 3.65G。所以确实会出现因 Inode 耗尽而无法创建文件的极端情况。</p>
+<p>Inode 在同个文件系统内保证唯一，在不同文件系统中互不依赖，存在 2 个不同磁盘上的文件 Inode 号码相同的情况。通过 Inode 号码直接删除 Inode 节点，等同于删除文件。当文件被删除后，Inode 会被系统回收再分配。</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">ls -i</span><br><span class="line"></span><br><span class="line"> 134610994 anaconda-post.log  1320256620 dev   134611301 home   134611303 lib64   146932813 misc   148638932 opt    148768809 root   134611337 sbin           1 sys   148768954 usr</span><br><span class="line"> 134610995 bin		       148635658 etc   134611302 lib    134611304 media   134611305 mnt            1 proc   148768952 run    134611338 srv    148768953 tmp   148772892 var</span><br><span class="line"></span><br><span class="line">find . -inum 134610994 -delete</span><br></pre></td></tr></table></figure>
-
-<p>当文件被删除后，Inode 会被系统回收分配给其他文件</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">touch x</span><br><span class="line">ls -i x</span><br><span class="line"></span><br><span class="line">122162998 x</span><br><span class="line"></span><br><span class="line">cp x y</span><br><span class="line">ls -i y</span><br><span class="line"></span><br><span class="line">122163059 y</span><br><span class="line"></span><br><span class="line">rm x</span><br><span class="line">ls -i x</span><br><span class="line"></span><br><span class="line">ls: cannot access x: No such file or directory</span><br><span class="line"></span><br><span class="line">cp y z</span><br><span class="line">ls -i z</span><br><span class="line"></span><br><span class="line">122162998 z</span><br></pre></td></tr></table></figure>
 
 <hr>
 <p>Unix&#x2F;Linux 系统中，目录（directory）也是一种文件：</p>
 <ul>
-<li>创建目录时，默认会生成两个目录项：”.” 和 “..”。</li>
-<li>前者的 Inode 号码就是当前目录的 Inode 号码，等同于当前目录的 “硬链接”，也就使得新建空目录的 “链接数” 加 1 等于 2。</li>
-<li>后者的 Inode 号码就是当前目录的父目录的 Inode 号码，等同于父目录的 “硬链接”，令父目录的 “链接数” 加 1。</li>
-<li>对于根目录，则两者都指向自己。</li>
+<li>创建目录时，默认会生成两个目录项：<code>.</code> 和 <code>..</code>。</li>
+<li>前者的 Inode 号码就是当前目录的 Inode 号码，等同于当前目录的 <code>硬链接</code>，也就使得新建空目录的链接数加 1 等于 2。</li>
+<li>后者的 Inode 号码就是当前目录的父目录的 Inode 号码，等同于父目录的硬链接，令父目录的 <code>链接数</code> 加 1。</li>
+<li>对于 ‘&#x2F;‘ 目录，则两者都指向自己。</li>
+<li>系统目录的 Inode 为特定项（Inode Number: 1），一般根据挂载顺序 ‘&#x2F;‘ 目录的 Inode Number 为 2。</li>
 </ul>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">stat /</span><br><span class="line"></span><br><span class="line">  File: &#x27;/&#x27;</span><br><span class="line">  Size: 4096            Blocks: 8          IO Block: 4096   directory</span><br><span class="line">Device: 36h/54d Inode: 148635650   Links: 1</span><br><span class="line">Access: (0755/drwxr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)</span><br><span class="line">Access: 2022-04-14 22:32:22.624785541 +0800</span><br><span class="line">Modify: 2022-04-14 22:32:22.624785541 +0800</span><br><span class="line">Change: 2022-04-14 22:32:22.698785457 +0800</span><br><span class="line"> Birth: -</span><br><span class="line"></span><br><span class="line">ls -ai /</span><br><span class="line"></span><br><span class="line"> 148635650 .            134610994 anaconda-post.log   148635658 etc    134611303 lib64   134611305 mnt    148768809 root   134611338 srv   148768954 usr</span><br><span class="line"> 148635650 ..           134610995 bin                 134611301 home   134611304 media   148638932 opt    148768952 run            1 sys   148772892 var</span><br><span class="line"> 148635665 .dockerenv  1321917680 dev                 134611302 lib    146932813 misc            1 proc   134611337 sbin   148768953 tmp</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">stat /</span><br><span class="line"></span><br><span class="line">  File: ‘/’</span><br><span class="line">  Size: 4096            Blocks: 8          IO Block: 4096   directory</span><br><span class="line">Device: 803h/2051d      Inode: 2           Links: 26</span><br><span class="line">Access: (0555/dr-xr-xr-x)  Uid: (    0/    root)   Gid: (    0/    root)</span><br><span class="line">Access: 2022-04-23 16:41:30.312343163 +0800</span><br><span class="line">Modify: 2022-04-21 17:17:40.483912721 +0800</span><br><span class="line">Change: 2022-04-21 17:17:40.483912721 +0800</span><br><span class="line"> Birth: -</span><br><span class="line"> </span><br><span class="line">ls -ai / | grep &quot; 1 &quot;</span><br><span class="line"></span><br><span class="line">       1 proc</span><br><span class="line">       1 sys</span><br></pre></td></tr></table></figure>
 
-<hr>
 <p>硬链接的目标和源共用同个 Inode，因此不能跨盘建立，否则报错 <code>Invalid cross-device link</code>。通过 <code>ln $&#123;src&#125; $&#123;tar&#125;</code> 建立硬链接无法作用于目录，否则报错 <code>hard link not allowed for directory</code>。</p>
-<p>与硬链接不同，软链接就是个独立的二进制文件，每次使用时再利用文件系统解析到对应的目标，如果失败则会返回错误。也就意味着软链接不会对文件系统本身产生侵入性影响。</p>
-<p>硬链接自身就是文件系统中的一环，链接数归 0 后系统才会尝试回收对应的文件，与引用计数的管理策略类似。如果目录可以建立硬链接，则容易造成循环引用，导致文件无法回收。</p>
-<h2 id="cp-x2F-rm-x2F-mv-x2F-tar-命令"><a href="#cp-x2F-rm-x2F-mv-x2F-tar-命令" class="headerlink" title="cp&#x2F;rm&#x2F;mv&#x2F;tar 命令"></a>cp&#x2F;rm&#x2F;mv&#x2F;tar 命令</h2><p>用 <code>strace</code> 可以很清楚地看到命令执行时的系统调用。通常来说 <code>rm</code> 主要用到 <code>unlink*</code>，<code>mv</code> 主要用到 <code>rename*</code>，<code>cp</code> 主要用到 <code>open</code>、<code>read</code>、<code>write</code>。</p>
+<p>硬链接自身就是文件系统中的一环，链接数归 0 后系统才会尝试回收对应的文件，与引用计数的管理策略类似。如果目录可以建立硬链接，则容易造成循环引用，导致文件无法回收。与硬链接不同，软链接就是个独立的二进制文件，使用时再通过文件系统解析到对应的目标，如果失败则会返回错误。也就意味着软链接不会对文件系统本身产生侵入性影响。</p>
+<h3 id="Inode-深入分析"><a href="#Inode-深入分析" class="headerlink" title="Inode 深入分析"></a>Inode 深入分析</h3><p>以 ext4 文件系统为例，硬盘格式化的时候，操作系统将其划分为多个 <code>Block Group</code></p>
+<ul>
+<li>Group 0 前面预留 1024 字节，可用于安装 x86 引导扇区。</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Group 0 Padding</th>
+<th>Block Group 0</th>
+<th>Block Group 1</th>
+<th>…</th>
+<th>Block Group N</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1024 bytes</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<ul>
+<li>Block Group 的布局大致如下</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>ext4 Super Block</th>
+<th>Group Descriptors</th>
+<th>Reserved GDT Blocks</th>
+<th>Data Block Bitmap</th>
+<th>inode Bitmap</th>
+<th>inode Table</th>
+<th>Data Blocks</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1 block</td>
+<td>N blocks</td>
+<td>N blocks</td>
+<td>1 block</td>
+<td>1 block</td>
+<td>N blocks</td>
+<td>N blocks</td>
+</tr>
+</tbody></table>
+<p>参考 <a target="_blank" rel="noopener" href="https://docs.huihoo.com/doxygen/linux/kernel/3.7/structext4__super__block.html">struct ext4_super_block</a> 以及 <a target="_blank" rel="noopener" href="https://docs.huihoo.com/doxygen/linux/kernel/3.7/structext4__inode.html">struct ext4_inode</a></p>
+<ul>
+<li>每个 Block Group 包含 <code>s_blocks_per_group</code> 个 Block，即 <code>8 * block_size_in_bytes</code>（Bitmap 大小为 <code>block_size_in_bytes</code>，最多可以表示的位数 <code>8 * block_size_in_bytes</code>）。</li>
+<li><code>s_inodes_per_group</code> 表示每个 Block Group 中 Inode 的数量。</li>
+<li>已知某个文件的 Inode 号码 为 <em>inum</em>，则查找文件内容的过程为：<ul>
+<li><code>(inum - 1 ) / s_inodes_per_group</code> 得到 Inode 所在的 Block Group</li>
+<li><code>(inum - 1 ) % s_inodes_per_group</code> 可得到 Inode 在 inode Table 中的偏移量</li>
+<li>通过 Block Group 的 Group Descriptors 找到 inode Table，根据偏移获取实际的 Inode 数据</li>
+<li>通过 Inode 结构中的 <a target="_blank" rel="noopener" href="https://docs.huihoo.com/doxygen/linux/kernel/3.7/structext4__inode.html#a507f79fb9f060b109d465a6e8a32a6b1">i_block</a> 获取 Data Blocks 中对应的数据块</li>
+<li>根据数据块中的结构读取实际数据：ext2 和 ext3 中结构为直接&#x2F;间接数据块表；ext4 中的结构则是 <a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/latest/filesystems/ext4/dynamic.html#extent-tree">Extent Tree</a>；</li>
+</ul>
+</li>
+</ul>
+<h2 id="cp-x2F-rm-x2F-mv-x2F-tar-命令"><a href="#cp-x2F-rm-x2F-mv-x2F-tar-命令" class="headerlink" title="cp&#x2F;rm&#x2F;mv&#x2F;tar 命令"></a>cp&#x2F;rm&#x2F;mv&#x2F;tar 命令</h2><p>用 <code>strace</code> 可以很清楚地看到命令执行时的系统调用。一般 <code>rm</code> 主要用到 <code>unlink*</code>，<code>mv</code> 主要用到 <code>rename*</code>，<code>cp</code> 主要用到 <code>open</code>、<code>read</code>、<code>write</code>。</p>
 <p>根据 <a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man2/unlink.2.html">linux&#x2F;man-pages&#x2F;unlink</a>，<code>unlink</code> 用于按照文件名删除文件：</p>
 <ul>
 <li>如果文件无其他链接，且没有进程打开该文件，则删除文件并释放空间</li>
@@ -571,17 +625,17 @@
 <p>以当前较新的 commit 为例 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/commit/636fcd22371266ee2792b4e0636cf96b4cacaa0c">636fcd22371266ee2792b4e0636cf96b4cacaa0c</a>，v6.0 之后整体工具链从 GCC-7.x 切换为 LLVM-13，CentOS7 系统编译出的二进制对应的动态库依赖如下</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">ldd ./tiflash</span><br><span class="line"></span><br><span class="line">        linux-vdso.so.1 (0x00007ffc575f5000)</span><br><span class="line">        libc++.so.1 =&gt; /root/test/tiflash/./libc++.so.1 (0x00007f109618c000)</span><br><span class="line">        libc++abi.so.1 =&gt; /root/test/tiflash/./libc++abi.so.1 (0x00007f1096148000)</span><br><span class="line">        libtiflash_proxy.so =&gt; /root/test/tiflash/./libtiflash_proxy.so (0x00007f1093343000)</span><br><span class="line">        libdl.so.2 =&gt; /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f109333c000)</span><br><span class="line">        librt.so.1 =&gt; /lib/x86_64-linux-gnu/librt.so.1 (0x00007f1093337000)</span><br><span class="line">        libm.so.6 =&gt; /lib/x86_64-linux-gnu/libm.so.6 (0x00007f1093253000)</span><br><span class="line">        libpthread.so.0 =&gt; /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007f109324c000)</span><br><span class="line">        libgcc_s.so.1 =&gt; /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007f1093232000)</span><br><span class="line">        libc.so.6 =&gt; /lib/x86_64-linux-gnu/libc.so.6 (0x00007f109300a000)</span><br><span class="line">        /lib64/ld-linux-x86-64.so.2 (0x00007f109625d000)</span><br></pre></td></tr></table></figure>
 
-<p>libtiflash_proxy.so 是一个 Rust 语言编写的动态库：<a target="_blank" rel="noopener" href="https://github.com/pingcap/tidb-engine-ext">tidb-engine-ext</a>。对于 <code>crate-type = [&quot;cdylib&quot;]</code> 类型的库，Rust 默认隐藏函数符号，如果要暴露函数需显式地指定其属性为 <code>#[no_mangle] pub unsafe extern &quot;C&quot;</code>，例如 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tidb-engine-ext/blob/794b9ee12d216cd66bce2da69794f2e5d96aac90/raftstore-proxy/src/lib.rs#L6">print_raftstore_proxy_version 函数定义</a>。通过工具查看 libtiflash_proxy.so 暴露的符号为：</p>
+<p>libtiflash_proxy.so 是一个 Rust 语言编写的动态库：<a target="_blank" rel="noopener" href="https://github.com/pingcap/tidb-engine-ext">tidb-engine-ext</a>。对于 <code>crate-type = [&quot;cdylib&quot;]</code> 类型的库，Rust 默认隐藏函数符号，如果要暴露函数需显式地指定其属性为 <code>#[no_mangle] pub unsafe extern &quot;C&quot;</code>，例如 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tidb-engine-ext/blob/794b9ee12d216cd66bce2da69794f2e5d96aac90/raftstore-proxy/src/lib.rs#L5-L8">print_raftstore_proxy_version 函数定义</a>。通过工具查看 libtiflash_proxy.so 暴露的符号为：</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">0000000000aadda0 T bz_internal_error</span><br><span class="line">0000000000ee9e30 T perf_signal_handler</span><br><span class="line">00000000010b5200 T print_raftstore_proxy_version</span><br><span class="line">00000000010b5210 T run_raftstore_proxy_ffi</span><br><span class="line">0000000000e96c00 T rust_eh_personality</span><br></pre></td></tr></table></figure>
 
-<p>与 TiKV 不同，tidb-engine-ext 不指定内存分配器，令 <code>malloc</code>｜<code>free</code> 之类的内存管理接口被编译器决议成未定义符号。此举是为了保证同主进程兼容：例如 TiFlash 中使用了自定义的内存分配器 jemalloc，malloc｜free 之类的函数被决议成内部重载的版本，参照上文 <a href="#%E5%88%86%E6%9E%90%EF%BC%881%EF%BC%89">分析（1）</a> 的动态库装载过程，libtiflash_proxy.so 最终使用的是 TiFlash 主进程提供的内存分配器。如果 TiFlash 也不指定内存分配器，则最终使用的是 Glibc 相关库中的默认版本。</p>
-<p>Glibc 库中可以看到类似于 <code>GCC_</code> 为前缀或者是 <code>GLIBC_PRIVATE</code> 的符号版本。后者表示非公开版本，有可能随着共享库的版本演化而被删除或改变，最好不要使用这些符号，否则风险自负。</p>
+<p>与 TiKV 不同，tidb-engine-ext 不指定内存分配器，令 <code>malloc</code>｜<code>free</code> 之类的内存管理接口被编译器决议成未定义符号，此举是为了保证同宿主进程兼容。例如 TiFlash 中使用了自定义的内存分配器 jemalloc，malloc｜free 之类的函数被决议成内部重载的版本，参照上文 <a href="#%E5%88%86%E6%9E%90%EF%BC%881%EF%BC%89">分析（1）</a> 的动态库装载过程，libtiflash_proxy.so 最终使用的是 TiFlash 主进程提供的内存分配器。如果 TiFlash 也不指定内存分配器，则最终使用的是 Glibc 相关库中的默认版本。</p>
+<p>Glibc 库中可以看到类似于 <code>GCC_</code> 为前缀或者是 <code>GLIBC_PRIVATE</code> 的符号版本。后者表示 <strong>非公开版本</strong>，有可能随着共享库的版本演化而被删除或改变，最好不要使用这些符号，否则风险自负。</p>
 <p>查看 TiFlash 的符号表可知共有 3 个地方用到 <code>GLIBC_PRIVATE</code>。而 Ubuntu:21.10 中 的 <code>/lib/aarch64-linux-gnu/libpthread.so.0</code> 和 <code>/lib/aarch64-linux-gnu/libc.so.6</code> 已然没有对应的符号。</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">readelf -a ./tiflash | grep &#x27;GLIBC_PRIVATE&#x27;</span><br><span class="line"></span><br><span class="line">00000726a048  026c00000406 R_AARCH64_TLS_TPR 0000000000000000 errno@GLIBC_PRIVATE + 0</span><br><span class="line">0000072827b8  026b00000402 R_AARCH64_JUMP_SL 0000000000000000 __pthread_get_minstack@GLIBC_PRIVATE + 0</span><br><span class="line">0000072827c0  026d00000402 R_AARCH64_JUMP_SL 0000000000000000 __gai_sigqueue@GLIBC_PRIVATE + 0</span><br><span class="line">   619: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __pthread_get_minstack@GLIBC_PRIVATE (9)</span><br><span class="line">   620: 0000000000000000     0 TLS     GLOBAL DEFAULT  UND errno@GLIBC_PRIVATE (10)</span><br><span class="line">   621: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND __gai_sigqueue@GLIBC_PRIVATE (10)</span><br><span class="line">  268:   2 (GLIBC_2.17)    4 (GLIBC_2.17)    4 (GLIBC_2.17)    9 (GLIBC_PRIVATE)</span><br><span class="line">  26c:   a (GLIBC_PRIVATE)   a (GLIBC_PRIVATE)   2 (GLIBC_2.17)    4 (GLIBC_2.17) </span><br><span class="line">  0x0080:   Name: GLIBC_PRIVATE  Flags: none  Version: 9</span><br><span class="line">  0x00d0:   Name: GLIBC_PRIVATE  Flags: none  Version: 10</span><br></pre></td></tr></table></figure>
 
 <hr>
 <p><strong>符号是如何被引入的？</strong></p>
-<p>以 <code>__gai_sigqueue</code> 为例，进到 编译目录｜源码目录 下，对所有文件（包括二进制）检索关键字 <code>__gai_sigqueue</code> 可以看出不是本地代码引入了该符号。</p>
+<p>以 <code>__gai_sigqueue</code> 为例，进到 编译目录｜源码目录 下，对所有文件（包括二进制）检索关键字 <code>__gai_sigqueue</code>，结果显示只有编译终产物 tiflash 二进制文件包含该信息，可以看出符号不是本地代码引入的。</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">cd $&#123;build_dir&#125;</span><br><span class="line">grep &#x27;__gai_sigqueue&#x27; -r .</span><br><span class="line"></span><br><span class="line">Binary file dbms/src/Server/tiflash matches</span><br></pre></td></tr></table></figure>
 
 <p>查看 TiFlash 编译流程最后的链接命令，参数中包含 2 个外部静态库 <code>/usr/lib64/librt.a</code> 和 <code>/usr/lib64/libanl.a</code>，分别导出符号表可知 libanl.a 中使用了该符号：</p>
@@ -608,9 +662,11 @@
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">.symver __foo_old, foo@VER1</span><br><span class="line">.symver __foo_new, foo@@VER2</span><br><span class="line">.symver __bar_old, bar@@VER1</span><br><span class="line">....</span><br></pre></td></tr></table></figure>
 
 <ul>
-<li>例如下面的例子，强制将 <code>realpath()</code> 指定为 <code>GLIBC_2.2.5</code> 版本。</li>
+<li>例如下面的例子，通过编译参数强制将 <code>realpath()</code> 指定为 <code>GLIBC_2.2.5</code> 版本。</li>
 </ul>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;limits.h&gt;</span><br><span class="line">#include &lt;stdlib.h&gt;</span><br><span class="line">#include &lt;stdio.h&gt;</span><br><span class="line"></span><br><span class="line">__asm__(&quot;.symver realpath,realpath@GLIBC_2.2.5&quot;);</span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">    const char* unresolved = &quot;/lib64&quot;;</span><br><span class="line">    char resolved[PATH_MAX+1];</span><br><span class="line"></span><br><span class="line">    if(!realpath(unresolved, resolved))</span><br><span class="line">        &#123; return 1; &#125;</span><br><span class="line"></span><br><span class="line">    printf(&quot;%s\n&quot;, resolved);</span><br><span class="line"></span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">// main6.cpp</span><br><span class="line">#include &lt;limits.h&gt;</span><br><span class="line">#include &lt;stdlib.h&gt;</span><br><span class="line">#include &lt;stdio.h&gt;</span><br><span class="line"></span><br><span class="line">#ifdef REALPATH_HACK</span><br><span class="line">__asm__(&quot;.symver realpath,realpath@GLIBC_2.2.5&quot;);</span><br><span class="line">#endif</span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">    const char* unresolved = &quot;/lib64&quot;;</span><br><span class="line">    char resolved[PATH_MAX+1];</span><br><span class="line"></span><br><span class="line">    if(!realpath(unresolved, resolved))</span><br><span class="line">        &#123; return 1; &#125;</span><br><span class="line"></span><br><span class="line">    printf(&quot;%s\n&quot;, resolved);</span><br><span class="line"></span><br><span class="line">    return 0;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">clang++ main6.cpp -o main6 &amp;&amp; readelf -a  main6 | grep &#x27;realpath&#x27;</span><br><span class="line"></span><br><span class="line">000000203ae8  000400000007 R_X86_64_JUMP_SLO 0000000000000000 realpath@GLIBC_2.3 + 0</span><br><span class="line">     4: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND realpath@GLIBC_2.3 (3)</span><br><span class="line">    32: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND realpath</span><br><span class="line"></span><br><span class="line">clang++ main6.cpp -DREALPATH_HACK -o main6 &amp;&amp; readelf -a  main6 | grep &#x27;realpath&#x27;</span><br><span class="line"></span><br><span class="line">000000203ac8  000500000007 R_X86_64_JUMP_SLO 0000000000000000 realpath@GLIBC_2.2.5 + 0</span><br><span class="line">     5: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND realpath@GLIBC_2.2.5 (2)</span><br><span class="line">    33: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND realpath</span><br></pre></td></tr></table></figure>
 
 <h1 id="TODO"><a href="#TODO" class="headerlink" title="TODO"></a>TODO</h1><p>未完待续</p>
 
@@ -627,6 +683,7 @@
               <a href="/tags/System/" rel="tag"># System</a>
               <a href="/tags/FileSystem/" rel="tag"># FileSystem</a>
               <a href="/tags/DynamicLibrary/" rel="tag"># DynamicLibrary</a>
+              <a href="/tags/Compiler/" rel="tag"># Compiler</a>
           </div>
 
         
