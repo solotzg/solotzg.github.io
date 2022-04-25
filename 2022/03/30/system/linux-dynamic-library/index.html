@@ -28,7 +28,7 @@
 <meta property="og:description" content="PingCAP（aka 贵司）自研了套部署工具 TiUP 来取代早前使用的重型部署工具 Ansible。然而实际使用时，TiFlash 节点在打 patch 过程中出现过不符合预期的报错。后来发现，TiUP 打 patch 的操作并没有停进程，而是直接 tar 命令解压覆盖部署目录，原子性保障也是无从谈起。v6.0 版本前 TiFlash 部分模块包含动态加载 共享库（aka 动态库）的行为，这类">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2022-03-30T08:04:36.000Z">
-<meta property="article:modified_time" content="2022-04-24T17:46:23.037Z">
+<meta property="article:modified_time" content="2022-04-25T01:58:23.178Z">
 <meta property="article:author" content="Zhigao Tong">
 <meta property="article:tag" content="PingCAP">
 <meta property="article:tag" content="Linux">
@@ -236,7 +236,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-04-25 01:46:23" itemprop="dateModified" datetime="2022-04-25T01:46:23+08:00">2022-04-25</time>
+      <time title="Modified: 2022-04-25 09:58:23" itemprop="dateModified" datetime="2022-04-25T09:58:23+08:00">2022-04-25</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -653,9 +653,15 @@
 
 <p>排查函数调用关系可以得出符号被引入 TiFlash 的过程：</p>
 <ul>
-<li>libc.so 中实现并对外暴露 <code>__gai_sigqueue()</code> 函数</li>
-<li>libanl.a 的 <code>gai_notify.o</code> 中 <code>__gai_notify()</code> 和 <code>__gai_notify_only()</code> 调用了 <code>__gai_sigqueue()</code>；<code>getaddrinfo_a.o</code> 中 <code>getaddrinfo_a()</code> 调用了 <code>__gai_notify_only()</code>；<code>gai_misc.o</code> 中 <code>handle_requests()</code> 调用了 <code>__gai_notify()</code>；</li>
-<li>TiFlash 代码中的 <code>poco</code> 模块调用了 <code>getaddrinfo_a()</code> 函数</li>
+<li>libc.so：实现并对外暴露 <code>__gai_sigqueue()</code> 函数，对应版本 <code>GLIBC_PRIVATE</code></li>
+<li>libanl.a：<ul>
+<li><code>gai_notify.o</code> 中 <code>__gai_notify()</code> 和 <code>__gai_notify_only()</code> 调用了 <code>__gai_sigqueue()</code></li>
+<li><code>getaddrinfo_a.o</code> 中 <code>getaddrinfo_a()</code> 调用了 <code>__gai_notify_only()</code></li>
+<li><code>gai_misc.o</code> 中 <code>handle_requests()</code> 调用了 <code>__gai_notify()</code></li>
+</ul>
+</li>
+<li>TiFlash 代码中的 <code>poco</code> 模块调用了 <code>getaddrinfo_a()</code> 函数：<a target="_blank" rel="noopener" href="https://github.com/pingcap/poco/blob/e411ea34492bf26e76b4e4a03ff5813a0c779240/Net/src/DNS.cpp#L167">pingcap&#x2F;poco&#x2F;Net&#x2F;src&#x2F;DNS.cpp#L167</a></li>
+<li>libanl.a 和 libc.so 被先后链接，<code>getaddrinfo_a</code> 被决议成本地符号，<code>__gai_sigqueue</code> 被决议称外部符号</li>
 </ul>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">nm /lib64/libanl.a</span><br><span class="line"></span><br><span class="line">...</span><br><span class="line">gai_notify.o:</span><br><span class="line">                 U free</span><br><span class="line">0000000000000120 T __gai_notify</span><br><span class="line">0000000000000050 T __gai_notify_only</span><br><span class="line">                 U __gai_sigqueue</span><br><span class="line">                 U malloc</span><br><span class="line">                 U pthread_attr_init</span><br><span class="line">                 U pthread_attr_setdetachstate</span><br><span class="line">                 U pthread_create</span><br><span class="line">                 U sigemptyset</span><br><span class="line">0000000000000000 W _.stapsdt.base</span><br><span class="line">...</span><br><span class="line">getaddrinfo_a.o:</span><br><span class="line">                 U errno</span><br><span class="line">                 U __gai_enqueue_request</span><br><span class="line">                 U __gai_notify_only</span><br><span class="line">                 U __gai_requests_mutex</span><br><span class="line">0000000000000000 T getaddrinfo_a</span><br><span class="line">                 U getpid</span><br><span class="line">                 U _GLOBAL_OFFSET_TABLE_</span><br><span class="line">                 U malloc</span><br><span class="line">                 U pthread_mutex_lock</span><br><span class="line">                 U pthread_mutex_unlock</span><br><span class="line">                 w pthread_setcancelstate</span><br><span class="line">...</span><br><span class="line">gai_misc.o:</span><br><span class="line">...</span><br><span class="line">0000000000000000 t handle_requests</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
 
