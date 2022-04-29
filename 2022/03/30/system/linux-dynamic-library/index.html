@@ -28,7 +28,7 @@
 <meta property="og:description" content="PingCAP（aka 贵司）自研了套部署工具 TiUP 来取代早前使用的重型部署工具 Ansible。然而实际使用时，TiFlash 节点在打 patch 过程中出现过不符合预期的报错。后来发现，TiUP 打 patch 的操作并没有停进程，而是直接 tar 命令解压覆盖部署目录，原子性保障也是无从谈起。v6.0 版本前 TiFlash 部分模块包含动态加载 共享库（aka 动态库）的行为，这类">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2022-03-30T08:04:36.000Z">
-<meta property="article:modified_time" content="2022-04-29T01:53:30.187Z">
+<meta property="article:modified_time" content="2022-04-29T10:47:55.593Z">
 <meta property="article:author" content="Zhigao Tong">
 <meta property="article:tag" content="PingCAP">
 <meta property="article:tag" content="Linux">
@@ -236,7 +236,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-04-29 09:53:30" itemprop="dateModified" datetime="2022-04-29T09:53:30+08:00">2022-04-29</time>
+      <time title="Modified: 2022-04-29 18:47:55" itemprop="dateModified" datetime="2022-04-29T18:47:55+08:00">2022-04-29</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -544,7 +544,7 @@
 <li>前后 so 文件完全一致：<ul>
 <li>如果调用到依赖外部符号的逻辑，但此时外部符号并没有经过重新解析，直接使用 <code>.got</code> &#x2F; <code>.got.plt</code> 段数据，则会引起访问非法地址 <code>Segmentation fault</code></li>
 <li>如果调用的逻辑没有依赖外部符号<ul>
-<li>如果逻辑依赖 <code>.data</code> &#x2F; <code>.bss</code> 段数据，则会因为数据被替换而引发逻辑异常</li>
+<li>如果逻辑依赖 <code>.data</code> &#x2F; <code>.bss</code> 段数据（例如静态变量），则会因为数据被替换而引发逻辑异常</li>
 <li>如果逻辑没有其他依赖，则可正常运行</li>
 </ul>
 </li>
@@ -671,8 +671,13 @@
 </ul>
 <p>b. 将有风险的符号在本地实现</p>
 <ul>
-<li>例如 CK 的 glibc-compatibility 模块中 <a target="_blank" rel="noopener" href="https://github.com/ClickHouse/ClickHouse/blob/4dcbf3a5c5dfe1ccb2f47c025b8cb23ae71f1dd2/base/glibc-compatibility/glibc-compatibility.c#L18">glibc-compatibility.c#L18</a> 直接将 <code>__gai_sigqueue()</code> 函数代码在本地实现；根据上文介绍的原理，只要链接 glibc-compatibility 先于 glibc，则最终符号表里用的就是本地实现的函数；</li>
+<li>例如 CK 的 glibc-compatibility 模块中 <a target="_blank" rel="noopener" href="https://github.com/ClickHouse/ClickHouse/blob/4dcbf3a5c5dfe1ccb2f47c025b8cb23ae71f1dd2/base/glibc-compatibility/glibc-compatibility.c#L18">glibc-compatibility.c#L18</a> 直接将 <code>__gai_sigqueue()</code> 函数代码在本地实现。参考 <a href="#Linux-%E9%9D%99%E6%80%81%E5%BA%93">Linux 静态库</a> 中介绍的链接器行为，只要链接 glibc-compatibility 先于 glibc，则最终符号表里用的就是本地实现的函数；</li>
 <li>实际上 TiFlash 的代码里也有类似的实现 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/tree/eaf1a4cf886d1d5a86d04ef14eff956778ab4911/libs/libglibc-compatibility">libglibc-compatibility</a>，但在 ARM 平台编译时不启用（尚未适配）。</li>
+<li><strong>注意：如果程序用 <code>-static</code> 的模式编译（即链接 <code>/lib64/libc.a</code>），则要注意符号冲突。</strong><ul>
+<li>例如本案例中 <code>__gai_sigqueue</code> 来自 <code>gai_sigqueue.o</code>，glibc 中该目标文件下没有定义导出其他符号，不会有影响</li>
+<li>假如本地实现了 <code>getnssent_r.o</code> 的 <code>__nss_endent</code>，则需要同时实现 <code>__nss_getent_r</code> 和 <code>__nss_setent</code>。如果程序其他模块引用了 <code>__nss_getent_r</code> 并需要链接 <code>getnssent_r.o</code>，则容易引起符号冲突。</li>
+</ul>
+</li>
 </ul>
 <p>c. 利用 asm 显示地为函数指定 glibc 版本，这种方式需要把控好函数的入口，避免过度污染</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">.symver __foo_old, foo@VER1</span><br><span class="line">.symver __foo_new, foo@@VER2</span><br><span class="line">.symver __bar_old, bar@@VER1</span><br><span class="line">....</span><br></pre></td></tr></table></figure>
@@ -699,7 +704,7 @@
 </ul>
 <p>尽管目前 <code>libtiflash_proxy.so</code> 是用的隐式加载的模式，但实际上核心的功能函数就只有 <code>run_raftstore_proxy_ffi</code>，动态库与宿主进程间交互的接口（主要是函数指针）通过这个入口相互注册，所以完全可以做到运行时加载。</p>
 <ul>
-<li>这实际上也是设计动态库的一种方向，把接口封装到运行逻辑的上下文中而不是独立的函数，以此来支持热更新。当然缺点也是有的：一来是目前 tidb-engine-ext 面向的场景并不需要热更新，二来额外的封装造成接口函数调用多出些间接寻址开销（正常业务场景中可以忽略不计）。</li>
+<li>这种动态库设计方向，把接口封装到运行逻辑的上下文中而不是独立的函数，以此来支持热更新。当然缺点也是有的：一来是目前 tidb-engine-ext 面向的场景并不需要热更新，二来额外的封装造成接口函数调用多出些间接寻址开销（正常业务场景中可以忽略不计）。</li>
 <li>运行时加载也可以解决潜在的动态库符号冲突问题，参考 <a href="#%E6%A1%88%E4%BE%8B%EF%BC%881%EF%BC%89">案例（1）</a>。</li>
 </ul>
 <h1 id="Linux-静态库"><a href="#Linux-静态库" class="headerlink" title="Linux 静态库"></a>Linux 静态库</h1><p>在软件开发体系中，把每个源代码模块独立地编译，然后按照需要 “组装” 起来，这个组装模块的过程就是链接（Linking）。链接器的工作主要是把指令对其他符号地址的引用加以修正。链接过程主要包括了地址和空间分配（Address and Storage Allocation）、符号决议（Symbol Resolution，aka 符号绑定）和重定位（Relocation）等步骤。</p>
