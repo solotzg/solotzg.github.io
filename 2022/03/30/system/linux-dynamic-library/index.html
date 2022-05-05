@@ -28,7 +28,7 @@
 <meta property="og:description" content="PingCAP（aka 贵司）自研了套部署工具 TiUP 来取代早前使用的重型部署工具 Ansible。然而实际使用时，TiFlash 节点在打 patch 过程中出现过不符合预期的报错。后来发现，TiUP 打 patch 的操作并没有停进程，而是直接 tar 命令解压覆盖部署目录，原子性保障也是无从谈起。v6.0 版本前 TiFlash 部分模块包含动态加载 共享库（aka 动态库）的行为，这类">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2022-03-30T08:04:36.000Z">
-<meta property="article:modified_time" content="2022-04-29T10:47:55.593Z">
+<meta property="article:modified_time" content="2022-05-05T10:40:24.608Z">
 <meta property="article:author" content="Zhigao Tong">
 <meta property="article:tag" content="PingCAP">
 <meta property="article:tag" content="Linux">
@@ -236,7 +236,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-04-29 18:47:55" itemprop="dateModified" datetime="2022-04-29T18:47:55+08:00">2022-04-29</time>
+      <time title="Modified: 2022-05-05 18:40:24" itemprop="dateModified" datetime="2022-05-05T18:40:24+08:00">2022-05-05</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -390,7 +390,7 @@
 <ul>
 <li>T &#x2F; t：代码段中的函数</li>
 <li>U：被调用但并没有定义的符号（表明需要其他库支持）</li>
-<li>W &#x2F; w：”弱态” 符号，它们虽然被定义，但是可能被其他库中的同名符号覆盖</li>
+<li>W &#x2F; w：”弱态” 符号，它们虽然被定义，但是可能被其他库中的同名符号覆盖（常见于模板、结构体、类等使用场景）</li>
 <li>B &#x2F; b：bss 中的未初始化全局&#x2F;局部变量</li>
 <li>D &#x2F; d：数据段中初始化的全局&#x2F;局部变量 </li>
 <li>…</li>
@@ -530,6 +530,7 @@
 <h4 id="分析（2）"><a href="#分析（2）" class="headerlink" title="分析（2）"></a>分析（2）</h4><ul>
 <li>应用程序加载动态库时，内核通过 mmap 把 so 加载到进程地址空间，对应 <code>Virtual memory area (VMA)</code> 中多个 <code>页（Page）</code><ul>
 <li>相同 Inode 的 so 可被不同程序共享页缓存</li>
+<li>段的装载地址和空间的对齐单位是页</li>
 <li><a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man8/ld.so.8.html">dynamic linker&#x2F;loader</a> 会把 so 里面引用的外部符号按照上文所述步骤进行解析和重定位</li>
 </ul>
 </li>
@@ -537,7 +538,7 @@
 <li>运行到 so 里面的代码时，因为虚拟内存页已被清除，会产生一次缺页中断</li>
 <li>缺页中断会导致内核从 so 文件中拷贝对应的页到内存中，<strong>so 地址范围内的数据相关表段也会替换为原始值，GOT &#x2F; PLT 相关因此丢失重定位信息</strong></li>
 <li>前后 so 不一样，则逻辑执行结果不可知<ul>
-<li>例如需要的访问的地址偏移大于新的 so 的地址范围，就会产生 <code>bus erro</code></li>
+<li>例如需要的访问的地址偏移大于新的 so 的地址范围，就会产生 <code>Bus error</code></li>
 <li>访问非法地址则会引起 <code>Segmentation fault</code></li>
 </ul>
 </li>
@@ -692,10 +693,10 @@
 <h2 id="动态库-or-静态库"><a href="#动态库-or-静态库" class="headerlink" title="动态库 or 静态库"></a>动态库 or 静态库</h2><h3 id="案例（7）"><a href="#案例（7）" class="headerlink" title="案例（7）"></a>案例（7）</h3><p><a href="#%E6%A1%88%E4%BE%8B%EF%BC%886%EF%BC%89">案例（6）</a> 中提到了 Rust 语言实现的动态库 <code>libtiflash_proxy.so</code>，为什么实现上要选择动态库而不是静态库？</p>
 <h4 id="分析（7）"><a href="#分析（7）" class="headerlink" title="分析（7）"></a>分析（7）</h4><p>涉及到跨语言交互的场景，符号冲突是一个不忽略的问题。Rust 关于符号处理的行为是：</p>
 <ul>
-<li>对于 <code>crate-type = [&quot;cdylib&quot;]</code> 类型的库，Rust 默认对外 <strong>隐藏符号</strong>，如果要以 C 语言的 ABI 标准对外导出函数需显式地指定其属性为 <code>#[no_mangle] pub unsafe extern &quot;C&quot;</code>，例如 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tidb-engine-ext/blob/794b9ee12d216cd66bce2da69794f2e5d96aac90/raftstore-proxy/src/lib.rs#L5-L8"><code>print_raftstore_proxy_version 函数定义</code></a>。</li>
+<li>对于 <code>crate-type = [&quot;cdylib&quot;]</code> 类型的库，Rust 默认对外 <strong>隐藏符号</strong>，如果要以 C 语言的 ABI 标准对外导出函数需显式地指定其属性为 <code>#[no_mangle] pub unsafe extern &quot;C&quot;</code>，例如 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tidb-engine-ext/blob/794b9ee12d216cd66bce2da69794f2e5d96aac90/raftstore-proxy/src/lib.rs#L5-L8">print_raftstore_proxy_version 函数定义</a>。</li>
 <li>对于 <code>#[crate_type = &quot;staticlib&quot;]</code> 类型的静态库，则是同其他语言一样默认导出符号。</li>
 </ul>
-<p>由于种种原因，tidb-engine-ext 需要同 TiKV 的代码栈保持基本同步。如果将 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tidb-engine-ext/blob/37c5e02754c6acc3b53d1d4e2cb1ad2108a60439/raftstore-proxy/Cargo.toml#L10"><code>raftstore_proxy</code></a> 的类型改成 <code>#[crate_type = &quot;staticlib&quot;]</code>，编译得到 <code>libraftstore_proxy.a</code>，强制魔改下 TiFlash 的代码，让其链接这个静态库而非 <code>libtiflash_proxy.so</code>，可以看到多处链接时报错 <code>ld.lld: error: duplicate symbol</code>。报错的符号有 <code>__rust_drop_panic</code>，<code>rust_panic</code>，<code>grpc_set_ssl_roots_override_callback</code> 等，与 <code>libsymbolization.a</code>，<code>libgrpc.a</code> 这几个本地编译的静态库相冲突。虽然理论上有诸多办法可以解决（参考 <a href="#%E9%9D%99%E6%80%81%E5%BA%93%E5%86%B2%E7%AA%81%E9%97%AE%E9%A2%98">静态库冲突问题</a>）但相对会增加心智负担。</p>
+<p>由于种种原因，tidb-engine-ext 需要同 TiKV 的代码栈保持基本同步。如果将 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tidb-engine-ext/blob/37c5e02754c6acc3b53d1d4e2cb1ad2108a60439/raftstore-proxy/Cargo.toml#L10">raftstore_proxy</a> 的类型改成 <code>#[crate_type = &quot;staticlib&quot;]</code>，编译得到 <code>libraftstore_proxy.a</code>，强制魔改下 TiFlash 的代码，让其链接这个静态库而非 <code>libtiflash_proxy.so</code>，可以看到多处链接时报错 <code>ld.lld: error: duplicate symbol</code>。报错的符号有 <code>__rust_drop_panic</code>，<code>rust_panic</code>，<code>grpc_set_ssl_roots_override_callback</code> 等，与 <code>libsymbolization.a</code>，<code>libgrpc.a</code> 这几个本地编译的静态库相冲突。虽然理论上有诸多办法可以解决（参考 <a href="#%E9%9D%99%E6%80%81%E5%BA%93%E5%86%B2%E7%AA%81%E9%97%AE%E9%A2%98">静态库冲突问题</a>）但相对会增加心智负担。</p>
 <p>使用动态库则相对简单，仅需把交互相关的接口定义好导出即可（同时也要避免符号污染）。根据上文的介绍，动态库装载时会进行符号绑定，所以在使用时有几点需要注意：</p>
 <ul>
 <li>与 TiKV 不同，tidb-engine-ext 不指定内存分配器（即令 <code>malloc</code>｜<code>free</code> 之类的内存管理接口被编译器决议成未定义符号），此举是为了保证同宿主进程兼容。例如 TiFlash 中使用了自定义的内存分配器 jemalloc，malloc｜free 之类的函数被决议成内部重载的版本，参照上文 <a href="#%E5%88%86%E6%9E%90%EF%BC%881%EF%BC%89">分析（1）</a> 的动态库装载过程，<code>libtiflash_proxy.so</code> 最终使用的是 TiFlash 主进程提供的内存分配器。如果 TiFlash 也不指定内存分配器，则最终使用的是 Glibc 相关库中的默认版本。</li>
