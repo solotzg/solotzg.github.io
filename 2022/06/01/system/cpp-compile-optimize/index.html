@@ -27,16 +27,16 @@
 <meta property="og:site_name" content="SOLOTZG">
 <meta property="og:description" content="面向 C艹（aka C++ or CPP）的开发规范一直都比较松散，各个组织包括个体总能在不轻易间把项目堆成 xxxx xxxxxxxx。  随着工程规模增大，TiFlash 项目也逐渐开始暴露出这类问题：  头文件凌乱 模板滥用 编译缓慢 工程质量愈发难以控制  本文旨在提供量化指标和参考方法用以优化 C++ 工程项目的编译流程。希望动员社区的力量，一起来优化 TiFlash 的工程质量。">
 <meta property="og:locale" content="en_US">
-<meta property="og:image" content="https://user-images.githubusercontent.com/150329/40900669-86eced80-6781-11e8-92c1-dc667b651e72.gif">
+<meta property="og:image" content="https://cdn.jsdelivr.net/gh/solotzg/solotzg.github.io/images/speedscope.app-example.gif">
 <meta property="article:published_time" content="2022-06-01T04:09:08.000Z">
-<meta property="article:modified_time" content="2022-06-20T04:40:20.715Z">
+<meta property="article:modified_time" content="2022-06-20T17:16:53.807Z">
 <meta property="article:author" content="Zhigao Tong">
 <meta property="article:tag" content="TiFlash">
 <meta property="article:tag" content="Linux">
 <meta property="article:tag" content="Compiler">
 <meta property="article:tag" content="CompilerFrontend">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="https://user-images.githubusercontent.com/150329/40900669-86eced80-6781-11e8-92c1-dc667b651e72.gif">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/solotzg/solotzg.github.io/images/speedscope.app-example.gif">
 
 
 <link rel="canonical" href="https://solotzg.github.io/2022/06/01/system/cpp-compile-optimize/">
@@ -231,7 +231,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-06-20 12:40:20" itemprop="dateModified" datetime="2022-06-20T12:40:20+08:00">2022-06-20</time>
+      <time title="Modified: 2022-06-21 01:16:53" itemprop="dateModified" datetime="2022-06-21T01:16:53+08:00">2022-06-21</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -272,7 +272,7 @@
 </ul>
 <p>C++ 编译器以源文件为编译单元，基本流程可参考 <a target="_blank" rel="noopener" href="https://en.cppreference.com/w/cpp/language/translation_phases">Phases of translation</a>。<a href="https://solotzg.github.io/2022/03/30/system/linux-dynamic-library/#Linux-%E5%8A%A8%E6%80%81%E5%BA%93">Linux 动态链接库相关整理#Linux-动态库</a> 这篇文章介绍过相关的几个案例（主要偏后端和链接器），可供参考。</p>
 <p><strong>以下所有的内容均默认编译器为 clang。</strong></p>
-<h1 id="编译流程分析"><a href="#编译流程分析" class="headerlink" title="编译流程分析"></a>编译流程分析</h1><p>编译 TiFlash 时加上 cmake 项 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/0477f9658b83df75b8583d5ff3021634081775ce/CMakeLists.txt#L106-L112">-DENABLE_TIME_TRACES&#x3D;ON</a>，即增加 clang 编译参数 <a target="_blank" rel="noopener" href="https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-ftime-trace">-ftime-trace</a>，令编译每个目标文件时以 <code>json</code> 格式输出相关分析追踪数据。可通过 <a href="chrome://tracing">chrome:&#x2F;&#x2F;tracing</a> 或网站 <a target="_blank" rel="noopener" href="https://www.speedscope.app/">Speedscope App</a> 查看火焰图。<img src="https://user-images.githubusercontent.com/150329/40900669-86eced80-6781-11e8-92c1-dc667b651e72.gif" alt="FlameGraphsExample"></p>
+<h1 id="编译流程分析"><a href="#编译流程分析" class="headerlink" title="编译流程分析"></a>编译流程分析</h1><p>编译 TiFlash 时加上 cmake 项 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/0477f9658b83df75b8583d5ff3021634081775ce/CMakeLists.txt#L106-L112">-DENABLE_TIME_TRACES&#x3D;ON</a>，即增加 clang 编译参数 <a target="_blank" rel="noopener" href="https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-ftime-trace">-ftime-trace</a>，令编译每个目标文件时以 <code>json</code> 格式输出相关分析追踪数据。可通过 <a href="chrome://tracing">chrome:&#x2F;&#x2F;tracing</a> 或网站 <a target="_blank" rel="noopener" href="https://www.speedscope.app/">Speedscope App</a> 查看火焰图。<img src="https://cdn.jsdelivr.net/gh/solotzg/solotzg.github.io/images/speedscope.app-example.gif" alt="FlameGraphsExample"></p>
 <p>以这个 commit 的 TiFlash 代码为例 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/commit/2d234262eb551b04b0ce304c7c6bacac847ca264">2d234262eb551b04b0ce304c7c6bacac847ca264</a>。编译完成后，可以在编译路径 <code>$&#123;TIFLASH_BUILD_DIR&#125;</code> 下找到各个目标文件对应的 json 文件，例如 <code>$&#123;TIFLASH_BUILD_DIR&#125;/dbms/src/Functions/CMakeFiles/clickhouse_functions.dir/FunctionsTiDBConversion.cpp.json</code>。根据文章 <a target="_blank" rel="noopener" href="https://aras-p.info/blog/2019/09/28/Clang-Build-Analyzer">Aras Pranckevičius - Clang Build Analyzer</a>，通过工具 <a target="_blank" rel="noopener" href="https://github.com/aras-p/ClangBuildAnalyzer.git">ClangBuildAnalyzer</a> 分析 TiFlash 编译过程的各项属性：</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/aras-p/ClangBuildAnalyzer.git</span><br><span class="line"><span class="built_in">cd</span> ClangBuildAnalyzer</span><br><span class="line">make -f projects/make/Makefile</span><br><span class="line">tmpfile=$(<span class="built_in">mktemp</span> /tmp/ClangBuildAnalyzer-capture_file.XXXXXX)</span><br><span class="line">./build/ClangBuildAnalyzer --all <span class="variable">$&#123;TIFLASH_BUILD_DIR&#125;</span> <span class="variable">$&#123;tmpfile&#125;</span> </span><br><span class="line">./build/ClangBuildAnalyzer --analyze <span class="variable">$&#123;tmpfile&#125;</span></span><br></pre></td></tr></table></figure>
 
