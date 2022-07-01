@@ -29,7 +29,7 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://solotzg.github.io/images/speedscope.app-example.gif">
 <meta property="article:published_time" content="2022-06-01T04:09:08.000Z">
-<meta property="article:modified_time" content="2022-06-26T01:53:36.505Z">
+<meta property="article:modified_time" content="2022-07-01T04:00:41.094Z">
 <meta property="article:author" content="Zhigao Tong">
 <meta property="article:tag" content="TiFlash">
 <meta property="article:tag" content="Linux">
@@ -148,7 +148,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
-            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9F%BA%E7%A1%80%E6%A6%82%E5%BF%B5"><span class="nav-number">1.</span> <span class="nav-text">基础概念</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90"><span class="nav-number">2.</span> <span class="nav-text">编译流程分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#ClangBuildAnalyzer-%E5%88%86%E6%9E%90%E7%BB%93%E6%9E%9C%EF%BC%88%E6%9C%AA%E4%BC%98%E5%8C%96%EF%BC%89"><span class="nav-number">2.1.</span> <span class="nav-text">ClangBuildAnalyzer 分析结果（未优化）</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E4%BC%98%E5%8C%96"><span class="nav-number">3.</span> <span class="nav-text">编译优化</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A8%A1%E6%9D%BF"><span class="nav-number">3.1.</span> <span class="nav-text">模板</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A8%A1%E6%9D%BF%E5%AE%9E%E4%BE%8B%E5%8C%96"><span class="nav-number">3.1.1.</span> <span class="nav-text">模板实例化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%881-0%EF%BC%89"><span class="nav-number">3.1.1.1.</span> <span class="nav-text">案例（1.0）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%86%E6%9E%90%EF%BC%881-0%EF%BC%89"><span class="nav-number">3.1.1.2.</span> <span class="nav-text">分析（1.0）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%881-0-1%EF%BC%89"><span class="nav-number">3.1.1.3.</span> <span class="nav-text">案例（1.0.1）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%881-0-2%EF%BC%89"><span class="nav-number">3.1.1.4.</span> <span class="nav-text">案例（1.0.2）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%881-1%EF%BC%89"><span class="nav-number">3.1.1.5.</span> <span class="nav-text">案例（1.1）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%881-2%EF%BC%89"><span class="nav-number">3.1.1.6.</span> <span class="nav-text">案例（1.2）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%A0%E5%87%8F%E9%87%8D%E5%A4%8D%E6%A8%A1%E6%9D%BF%E5%AE%9E%E4%BE%8B%E5%8C%96"><span class="nav-number">3.1.2.</span> <span class="nav-text">删减重复模板实例化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%882-0%EF%BC%89"><span class="nav-number">3.1.2.1.</span> <span class="nav-text">案例（2.0）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%86%E6%9E%90%EF%BC%882%EF%BC%89"><span class="nav-number">3.1.2.2.</span> <span class="nav-text">分析（2）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%86%E5%88%86%EF%BD%9C%E5%90%88%E5%B9%B6%E7%BC%96%E8%AF%91%E5%8D%95%E5%85%83"><span class="nav-number">3.1.3.</span> <span class="nav-text">拆分｜合并编译单元</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%98%BE%E5%BC%8F%E5%AE%9E%E4%BE%8B%E5%8C%96"><span class="nav-number">3.1.4.</span> <span class="nav-text">显式实例化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%883-0%EF%BC%89"><span class="nav-number">3.1.4.1.</span> <span class="nav-text">案例（3.0）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8A%BD%E8%B1%A1%E5%87%BA-ABI-%E7%A8%B3%E5%AE%9A%E6%8E%A5%E5%8F%A3"><span class="nav-number">3.1.5.</span> <span class="nav-text">抽象出 ABI 稳定接口</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%883-1%EF%BC%89"><span class="nav-number">3.1.5.1.</span> <span class="nav-text">案例（3.1）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%B4%E6%96%87%E4%BB%B6%E4%BC%98%E5%8C%96"><span class="nav-number">3.2.</span> <span class="nav-text">头文件优化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%B4%E6%96%87%E4%BB%B6%E4%BE%9D%E8%B5%96"><span class="nav-number">3.2.1.</span> <span class="nav-text">头文件依赖</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%89%8D%E5%90%91%E5%A3%B0%E6%98%8E"><span class="nav-number">3.2.2.</span> <span class="nav-text">前向声明</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%884-0%EF%BC%89"><span class="nav-number">3.2.2.1.</span> <span class="nav-text">案例（4.0）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%86%E6%9E%90%EF%BC%884%EF%BC%89"><span class="nav-number">3.2.2.2.</span> <span class="nav-text">分析（4）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%884-1%EF%BC%89"><span class="nav-number">3.2.2.3.</span> <span class="nav-text">案例（4.1）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%A2%84%E7%BC%96%E8%AF%91%E5%A4%B4%E6%96%87%E4%BB%B6%EF%BC%88PCH%EF%BC%89"><span class="nav-number">3.2.3.</span> <span class="nav-text">预编译头文件（PCH）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%884-2%EF%BC%89"><span class="nav-number">3.2.3.1.</span> <span class="nav-text">案例（4.2）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PImpl"><span class="nav-number">3.2.4.</span> <span class="nav-text">PImpl</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%885-0%EF%BC%89"><span class="nav-number">3.2.4.1.</span> <span class="nav-text">案例（5.0）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#LTO%EF%BC%88Link-Time-Optimization%EF%BC%89"><span class="nav-number">3.3.</span> <span class="nav-text">LTO（Link Time Optimization）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%886-0%EF%BC%89"><span class="nav-number">3.3.1.</span> <span class="nav-text">案例（6.0）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PGO%EF%BC%88Profile-Guided-Optimization%EF%BC%89"><span class="nav-number">3.4.</span> <span class="nav-text">PGO（Profile-Guided Optimization）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Post-link-Optimizer"><span class="nav-number">3.5.</span> <span class="nav-text">Post-link Optimizer</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E7%BC%93%E5%AD%98"><span class="nav-number">3.6.</span> <span class="nav-text">编译缓存</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%A4%BE%E5%8C%BA%EF%BD%9C%E6%96%B0%E5%BC%80%E5%8F%91%E8%80%85%E5%A6%82%E4%BD%95%E5%8F%82%E4%B8%8E%E4%BC%98%E5%8C%96-TiFlash-%E9%A1%B9%E7%9B%AE"><span class="nav-number">4.</span> <span class="nav-text">社区｜新开发者如何参与优化 TiFlash 项目</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BC%98%E5%8C%96%E7%9B%AE%E6%A0%87"><span class="nav-number">4.1.</span> <span class="nav-text">优化目标</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3"><span class="nav-number">4.2.</span> <span class="nav-text">参考文档</span></a></li></ol></li></ol></div>
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9F%BA%E7%A1%80%E6%A6%82%E5%BF%B5"><span class="nav-number">1.</span> <span class="nav-text">基础概念</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E6%B5%81%E7%A8%8B%E5%88%86%E6%9E%90"><span class="nav-number">2.</span> <span class="nav-text">编译流程分析</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#ClangBuildAnalyzer-%E5%88%86%E6%9E%90%E7%BB%93%E6%9E%9C%EF%BC%88%E6%9C%AA%E4%BC%98%E5%8C%96%EF%BC%89"><span class="nav-number">2.1.</span> <span class="nav-text">ClangBuildAnalyzer 分析结果（未优化）</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E4%BC%98%E5%8C%96"><span class="nav-number">3.</span> <span class="nav-text">编译优化</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A8%A1%E6%9D%BF"><span class="nav-number">3.1.</span> <span class="nav-text">模板</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A8%A1%E6%9D%BF%E5%AE%9E%E4%BE%8B%E5%8C%96"><span class="nav-number">3.1.1.</span> <span class="nav-text">模板实例化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%881-0%EF%BC%89"><span class="nav-number">3.1.1.1.</span> <span class="nav-text">案例（1.0）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%86%E6%9E%90%EF%BC%881-0%EF%BC%89"><span class="nav-number">3.1.1.2.</span> <span class="nav-text">分析（1.0）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%881-0-1%EF%BC%89"><span class="nav-number">3.1.1.3.</span> <span class="nav-text">案例（1.0.1）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%881-0-2%EF%BC%89"><span class="nav-number">3.1.1.4.</span> <span class="nav-text">案例（1.0.2）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%881-1%EF%BC%89"><span class="nav-number">3.1.1.5.</span> <span class="nav-text">案例（1.1）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%881-2%EF%BC%89"><span class="nav-number">3.1.1.6.</span> <span class="nav-text">案例（1.2）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%88%A0%E5%87%8F%E9%87%8D%E5%A4%8D%E6%A8%A1%E6%9D%BF%E5%AE%9E%E4%BE%8B%E5%8C%96"><span class="nav-number">3.1.2.</span> <span class="nav-text">删减重复模板实例化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%882-0%EF%BC%89"><span class="nav-number">3.1.2.1.</span> <span class="nav-text">案例（2.0）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%86%E6%9E%90%EF%BC%882%EF%BC%89"><span class="nav-number">3.1.2.2.</span> <span class="nav-text">分析（2）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%86%E5%88%86%EF%BD%9C%E5%90%88%E5%B9%B6%E7%BC%96%E8%AF%91%E5%8D%95%E5%85%83"><span class="nav-number">3.1.3.</span> <span class="nav-text">拆分｜合并编译单元</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%98%BE%E5%BC%8F%E5%AE%9E%E4%BE%8B%E5%8C%96"><span class="nav-number">3.1.4.</span> <span class="nav-text">显式实例化</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%883-0%EF%BC%89"><span class="nav-number">3.1.4.1.</span> <span class="nav-text">案例（3.0）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8A%BD%E8%B1%A1%E5%87%BA-ABI-%E7%A8%B3%E5%AE%9A%E6%8E%A5%E5%8F%A3"><span class="nav-number">3.1.5.</span> <span class="nav-text">抽象出 ABI 稳定接口</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%883-1%EF%BC%89"><span class="nav-number">3.1.5.1.</span> <span class="nav-text">案例（3.1）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A4%B4%E6%96%87%E4%BB%B6%E4%BC%98%E5%8C%96"><span class="nav-number">3.2.</span> <span class="nav-text">头文件优化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A4%B4%E6%96%87%E4%BB%B6%E4%BE%9D%E8%B5%96"><span class="nav-number">3.2.1.</span> <span class="nav-text">头文件依赖</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%89%8D%E5%90%91%E5%A3%B0%E6%98%8E"><span class="nav-number">3.2.2.</span> <span class="nav-text">前向声明</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%884-0%EF%BC%89"><span class="nav-number">3.2.2.1.</span> <span class="nav-text">案例（4.0）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%86%E6%9E%90%EF%BC%884%EF%BC%89"><span class="nav-number">3.2.2.2.</span> <span class="nav-text">分析（4）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%884-1%EF%BC%89"><span class="nav-number">3.2.2.3.</span> <span class="nav-text">案例（4.1）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%A2%84%E7%BC%96%E8%AF%91%E5%A4%B4%E6%96%87%E4%BB%B6%EF%BC%88PCH%EF%BC%89"><span class="nav-number">3.2.3.</span> <span class="nav-text">预编译头文件（PCH）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%884-2%EF%BC%89"><span class="nav-number">3.2.3.1.</span> <span class="nav-text">案例（4.2）</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PImpl"><span class="nav-number">3.2.4.</span> <span class="nav-text">PImpl</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%885-0%EF%BC%89"><span class="nav-number">3.2.4.1.</span> <span class="nav-text">案例（5.0）</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#LTO%EF%BC%88Link-Time-Optimization%EF%BC%89"><span class="nav-number">3.3.</span> <span class="nav-text">LTO（Link Time Optimization）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%886-0%EF%BC%89"><span class="nav-number">3.3.1.</span> <span class="nav-text">案例（6.0）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PGO%EF%BC%88Profile-Guided-Optimization%EF%BC%89"><span class="nav-number">3.4.</span> <span class="nav-text">PGO（Profile-Guided Optimization）</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%887-0%EF%BC%89"><span class="nav-number">3.4.1.</span> <span class="nav-text">案例（7.0）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B%EF%BC%887-1%EF%BC%89"><span class="nav-number">3.4.2.</span> <span class="nav-text">案例（7.1）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Post-link-Optimizer"><span class="nav-number">3.5.</span> <span class="nav-text">Post-link Optimizer</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BC%96%E8%AF%91%E7%BC%93%E5%AD%98"><span class="nav-number">3.6.</span> <span class="nav-text">编译缓存</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%A4%BE%E5%8C%BA%EF%BD%9C%E6%96%B0%E5%BC%80%E5%8F%91%E8%80%85%E5%A6%82%E4%BD%95%E5%8F%82%E4%B8%8E%E4%BC%98%E5%8C%96-TiFlash-%E9%A1%B9%E7%9B%AE"><span class="nav-number">4.</span> <span class="nav-text">社区｜新开发者如何参与优化 TiFlash 项目</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BC%98%E5%8C%96%E7%9B%AE%E6%A0%87"><span class="nav-number">4.1.</span> <span class="nav-text">优化目标</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3"><span class="nav-number">4.2.</span> <span class="nav-text">参考文档</span></a></li></ol></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -258,7 +258,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-06-26 09:53:36" itemprop="dateModified" datetime="2022-06-26T09:53:36+08:00">2022-06-26</time>
+      <time title="Modified: 2022-07-01 12:00:41" itemprop="dateModified" datetime="2022-07-01T12:00:41+08:00">2022-07-01</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -534,8 +534,261 @@
 </ul>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br></pre></td><td class="code"><pre><span class="line">clang++ -flto=thin -fvisibility=hidden -fvisibility-inlines-hidden -fwhole-program-vtables -fsplit-lto-unit -O3 -DNDEBUG -std=gnu++17 -o t1.o -c t1.cpp</span><br><span class="line">clang++ -flto=thin -fvisibility=hidden -fvisibility-inlines-hidden -fwhole-program-vtables -fsplit-lto-unit -O3 -DNDEBUG -std=gnu++17 -o t2.o -c t2.cpp</span><br><span class="line">clang++ -flto=thin -fvisibility=hidden -fvisibility-inlines-hidden -fwhole-program-vtables -fsplit-lto-unit -O3 -DNDEBUG -std=gnu++17 -o t3.o -c t3.cpp</span><br><span class="line">clang++ -flto=thin -fvisibility=hidden -fvisibility-inlines-hidden -fwhole-program-vtables -fsplit-lto-unit -O3 -DNDEBUG -fuse-ld=lld -pthread -flto=thin -flto-jobs=0 -fvisibility=hidden -fvisibility-inlines-hidden -fwhole-program-vtables -fsplit-lto-unit t1.o t2.o t3.o -o <span class="built_in">test</span></span><br><span class="line">objdump -d <span class="built_in">test</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">00000000002019f0 &lt;_Z3fooi&gt;:</span><br><span class="line">  2019f0:	85 ff                	<span class="built_in">test</span>   %edi,%edi</span><br><span class="line">  2019f2:	7e 04                	jle    2019f8 &lt;_Z3fooi+0x8&gt;</span><br><span class="line">  2019f4:	6b c7 64             	imul   <span class="variable">$0x64</span>,%edi,%eax</span><br><span class="line">  2019f7:	c3                   	retq   </span><br><span class="line">  2019f8:	f7 <span class="built_in">df</span>                	neg    %edi</span><br><span class="line">  2019fa:	48 69 c7 1f 85 eb 51 	imul   <span class="variable">$0x51eb851f</span>,%rdi,%rax</span><br><span class="line">  201a01:	48 c1 e8 25          	shr    <span class="variable">$0x25</span>,%rax</span><br><span class="line">  201a05:	f7 d8                	neg    %eax</span><br><span class="line">  201a07:	c3                   	retq   </span><br><span class="line"></span><br><span class="line">0000000000201a10 &lt;_Z3sumPiS_S_i&gt;:</span><br><span class="line">  201a10:	85 c9                	<span class="built_in">test</span>   %ecx,%ecx</span><br><span class="line">  201a12:	0f 8e 7f 01 00 00    	jle    201b97 &lt;_Z3sumPiS_S_i+0x187&gt;</span><br><span class="line">  201a18:	41 89 c8             	mov    %ecx,%r8d</span><br><span class="line">  201a1b:	83 f9 08             	cmp    <span class="variable">$0x8</span>,%ecx</span><br><span class="line">  201a1e:	73 7b                	jae    201a9b &lt;_Z3sumPiS_S_i+0x8b&gt;</span><br><span class="line">  201a20:	31 c9                	xor    %ecx,%ecx</span><br><span class="line">  201a22:	49 89 c9             	mov    %rcx,%r9</span><br><span class="line">  201a25:	49 f7 d1             	not    %r9</span><br><span class="line">  201a28:	4d 01 c1             	add    %r8,%r9</span><br><span class="line">  201a2b:	4d 89 c2             	mov    %r8,%r10</span><br><span class="line">  201a2e:	49 83 e2 03          	and    <span class="variable">$0x3</span>,%r10</span><br><span class="line">  201a32:	74 1f                	je     201a53 &lt;_Z3sumPiS_S_i+0x43&gt;</span><br><span class="line">  201a34:	66 2e 0f 1f 84 00 00 	nopw   %cs:0x0(%rax,%rax,1)</span><br><span class="line">  201a3b:	00 00 00 </span><br><span class="line">  201a3e:	66 90                	xchg   %ax,%ax</span><br><span class="line">  201a40:	8b 04 8e             	mov    (%rsi,%rcx,4),%eax</span><br><span class="line">  201a43:	03 04 8f             	add    (%rdi,%rcx,4),%eax</span><br><span class="line">  201a46:	89 04 8a             	mov    %eax,(%rdx,%rcx,4)</span><br><span class="line">  201a49:	48 83 c1 01          	add    <span class="variable">$0x1</span>,%rcx</span><br><span class="line">  201a4d:	49 83 c2 ff          	add    <span class="variable">$0xffffffffffffffff</span>,%r10</span><br><span class="line">  201a51:	75 ed                	jne    201a40 &lt;_Z3sumPiS_S_i+0x30&gt;</span><br><span class="line">  201a53:	49 83 f9 03          	cmp    <span class="variable">$0x3</span>,%r9</span><br><span class="line">  201a57:	0f 82 3a 01 00 00    	jb     201b97 &lt;_Z3sumPiS_S_i+0x187&gt;</span><br><span class="line">  201a5d:	0f 1f 00             	nopl   (%rax)</span><br><span class="line">  201a60:	8b 04 8e             	mov    (%rsi,%rcx,4),%eax</span><br><span class="line">  201a63:	03 04 8f             	add    (%rdi,%rcx,4),%eax</span><br><span class="line">  201a66:	89 04 8a             	mov    %eax,(%rdx,%rcx,4)</span><br><span class="line">  201a69:	8b 44 8e 04          	mov    0x4(%rsi,%rcx,4),%eax</span><br><span class="line">  201a6d:	03 44 8f 04          	add    0x4(%rdi,%rcx,4),%eax</span><br><span class="line">  201a71:	89 44 8a 04          	mov    %eax,0x4(%rdx,%rcx,4)</span><br><span class="line">  201a75:	8b 44 8e 08          	mov    0x8(%rsi,%rcx,4),%eax</span><br><span class="line">  201a79:	03 44 8f 08          	add    0x8(%rdi,%rcx,4),%eax</span><br><span class="line">  201a7d:	89 44 8a 08          	mov    %eax,0x8(%rdx,%rcx,4)</span><br><span class="line">  201a81:	8b 44 8e 0c          	mov    0xc(%rsi,%rcx,4),%eax</span><br><span class="line">  201a85:	03 44 8f 0c          	add    0xc(%rdi,%rcx,4),%eax</span><br><span class="line">  201a89:	89 44 8a 0c          	mov    %eax,0xc(%rdx,%rcx,4)</span><br><span class="line">  201a8d:	48 83 c1 04          	add    <span class="variable">$0x4</span>,%rcx</span><br><span class="line">  201a91:	49 39 c8             	cmp    %rcx,%r8</span><br><span class="line">  201a94:	75 ca                	jne    201a60 &lt;_Z3sumPiS_S_i+0x50&gt;</span><br><span class="line">  201a96:	e9 <span class="built_in">fc</span> 00 00 00       	jmpq   201b97 &lt;_Z3sumPiS_S_i+0x187&gt;</span><br><span class="line">  201a9b:	4a 8d 0c 82          	lea    (%rdx,%r8,4),%rcx</span><br><span class="line">  201a9f:	4a 8d 04 87          	lea    (%rdi,%r8,4),%rax</span><br><span class="line">  201aa3:	48 39 d0             	cmp    %rdx,%rax</span><br><span class="line">  201aa6:	41 0f 97 c2          	seta   %r10b</span><br><span class="line">  201aaa:	4a 8d 04 86          	lea    (%rsi,%r8,4),%rax</span><br><span class="line">  201aae:	48 39 f9             	cmp    %rdi,%rcx</span><br><span class="line">  201ab1:	41 0f 97 c3          	seta   %r11b</span><br><span class="line">  201ab5:	48 39 d0             	cmp    %rdx,%rax</span><br><span class="line">  201ab8:	0f 97 c0             	seta   %al</span><br><span class="line">  201abb:	48 39 f1             	cmp    %rsi,%rcx</span><br><span class="line">  201abe:	41 0f 97 c1          	seta   %r9b</span><br><span class="line">  201ac2:	31 c9                	xor    %ecx,%ecx</span><br><span class="line">  201ac4:	45 84 da             	<span class="built_in">test</span>   %r11b,%r10b</span><br><span class="line">  201ac7:	0f 85 55 ff ff ff    	jne    201a22 &lt;_Z3sumPiS_S_i+0x12&gt;</span><br><span class="line">  201acd:	44 20 c8             	and    %r9b,%al</span><br><span class="line">  201ad0:	0f 85 4c ff ff ff    	jne    201a22 &lt;_Z3sumPiS_S_i+0x12&gt;</span><br><span class="line">  201ad6:	44 89 c1             	mov    %r8d,%ecx</span><br><span class="line">  201ad9:	83 e1 f8             	and    <span class="variable">$0xfffffff8</span>,%ecx</span><br><span class="line">  201adc:	48 8d 41 f8          	lea    -0x8(%rcx),%rax</span><br><span class="line">  201ae0:	49 89 c1             	mov    %rax,%r9</span><br><span class="line">  201ae3:	49 c1 e9 03          	shr    <span class="variable">$0x3</span>,%r9</span><br><span class="line">  201ae7:	49 83 c1 01          	add    <span class="variable">$0x1</span>,%r9</span><br><span class="line">  201aeb:	48 85 c0             	<span class="built_in">test</span>   %rax,%rax</span><br><span class="line">  201aee:	0f 84 a4 00 00 00    	je     201b98 &lt;_Z3sumPiS_S_i+0x188&gt;</span><br><span class="line">  201af4:	4d 89 ca             	mov    %r9,%r10</span><br><span class="line">  201af7:	49 83 e2 fe          	and    <span class="variable">$0xfffffffffffffffe</span>,%r10</span><br><span class="line">  201afb:	49 f7 da             	neg    %r10</span><br><span class="line">  201afe:	31 c0                	xor    %eax,%eax</span><br><span class="line">  201b00:	f3 0f 6f 04 87       	movdqu (%rdi,%rax,4),%xmm0</span><br><span class="line">  201b05:	f3 0f 6f 4c 87 10    	movdqu 0x10(%rdi,%rax,4),%xmm1</span><br><span class="line">  201b0b:	f3 0f 6f 14 86       	movdqu (%rsi,%rax,4),%xmm2</span><br><span class="line">  201b10:	66 0f fe d0          	paddd  %xmm0,%xmm2</span><br><span class="line">  201b14:	f3 0f 6f 44 86 10    	movdqu 0x10(%rsi,%rax,4),%xmm0</span><br><span class="line">  201b1a:	66 0f fe c1          	paddd  %xmm1,%xmm0</span><br><span class="line">  201b1e:	f3 0f 7f 14 82       	movdqu %xmm2,(%rdx,%rax,4)</span><br><span class="line">  201b23:	f3 0f 7f 44 82 10    	movdqu %xmm0,0x10(%rdx,%rax,4)</span><br><span class="line">  201b29:	f3 0f 6f 44 87 20    	movdqu 0x20(%rdi,%rax,4),%xmm0</span><br><span class="line">  201b2f:	f3 0f 6f 4c 87 30    	movdqu 0x30(%rdi,%rax,4),%xmm1</span><br><span class="line">  201b35:	f3 0f 6f 54 86 20    	movdqu 0x20(%rsi,%rax,4),%xmm2</span><br><span class="line">  201b3b:	66 0f fe d0          	paddd  %xmm0,%xmm2</span><br><span class="line">  201b3f:	f3 0f 6f 44 86 30    	movdqu 0x30(%rsi,%rax,4),%xmm0</span><br><span class="line">  201b45:	66 0f fe c1          	paddd  %xmm1,%xmm0</span><br><span class="line">  201b49:	f3 0f 7f 54 82 20    	movdqu %xmm2,0x20(%rdx,%rax,4)</span><br><span class="line">  201b4f:	f3 0f 7f 44 82 30    	movdqu %xmm0,0x30(%rdx,%rax,4)</span><br><span class="line">  201b55:	48 83 c0 10          	add    <span class="variable">$0x10</span>,%rax</span><br><span class="line">  201b59:	49 83 c2 02          	add    <span class="variable">$0x2</span>,%r10</span><br><span class="line">  201b5d:	75 a1                	jne    201b00 &lt;_Z3sumPiS_S_i+0xf0&gt;</span><br><span class="line">  201b5f:	41 f6 c1 01          	<span class="built_in">test</span>   <span class="variable">$0x1</span>,%r9b</span><br><span class="line">  201b63:	74 29                	je     201b8e &lt;_Z3sumPiS_S_i+0x17e&gt;</span><br><span class="line">  201b65:	f3 0f 6f 04 87       	movdqu (%rdi,%rax,4),%xmm0</span><br><span class="line">  201b6a:	f3 0f 6f 4c 87 10    	movdqu 0x10(%rdi,%rax,4),%xmm1</span><br><span class="line">  201b70:	f3 0f 6f 14 86       	movdqu (%rsi,%rax,4),%xmm2</span><br><span class="line">  201b75:	66 0f fe d0          	paddd  %xmm0,%xmm2</span><br><span class="line">  201b79:	f3 0f 6f 44 86 10    	movdqu 0x10(%rsi,%rax,4),%xmm0</span><br><span class="line">  201b7f:	66 0f fe c1          	paddd  %xmm1,%xmm0</span><br><span class="line">  201b83:	f3 0f 7f 14 82       	movdqu %xmm2,(%rdx,%rax,4)</span><br><span class="line">  201b88:	f3 0f 7f 44 82 10    	movdqu %xmm0,0x10(%rdx,%rax,4)</span><br><span class="line">  201b8e:	4c 39 c1             	cmp    %r8,%rcx</span><br><span class="line">  201b91:	0f 85 8b fe ff ff    	jne    201a22 &lt;_Z3sumPiS_S_i+0x12&gt;</span><br><span class="line">  201b97:	c3                   	retq   </span><br><span class="line">  201b98:	31 c0                	xor    %eax,%eax</span><br><span class="line">  201b9a:	41 f6 c1 01          	<span class="built_in">test</span>   <span class="variable">$0x1</span>,%r9b</span><br><span class="line">  201b9e:	75 c5                	jne    201b65 &lt;_Z3sumPiS_S_i+0x155&gt;</span><br><span class="line">  201ba0:	eb ec                	jmp    201b8e &lt;_Z3sumPiS_S_i+0x17e&gt;</span><br><span class="line">  201ba2:	cc                   	int3   </span><br><span class="line"></span><br><span class="line">0000000000201bb0 &lt;_Z3kooi&gt;:</span><br><span class="line">  201bb0:	8d 47 06             	lea    0x6(%rdi),%eax</span><br><span class="line">  201bb3:	c3                   	retq   </span><br></pre></td></tr></table></figure>
 
-<h2 id="PGO（Profile-Guided-Optimization）"><a href="#PGO（Profile-Guided-Optimization）" class="headerlink" title="PGO（Profile-Guided Optimization）"></a>PGO（Profile-Guided Optimization）</h2><p><a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Profile-guided_optimization">Profile-Guided Optimization</a></p>
-<p>TBD</p>
+<h2 id="PGO（Profile-Guided-Optimization）"><a href="#PGO（Profile-Guided-Optimization）" class="headerlink" title="PGO（Profile-Guided Optimization）"></a>PGO（Profile-Guided Optimization）</h2><p>PGO（<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Profile-guided_optimization">Profile-Guided Optimization</a>）也称 FDO（Feedback Directed Optimization），指通过工具采集程序运行时的 profile 数据，用以在重新编译流程中优化程序。</p>
+<ul>
+<li>FDO 的方案普遍被大厂用于优化数据中心的应用</li>
+<li>TiFlash 中支持 PGO：<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/pull/5160">PR#5160</a></li>
+</ul>
+<p>根据 <a target="_blank" rel="noopener" href="https://clang.llvm.org/docs/UsersManual.html#profile-guided-optimization">llvm&#x2F;docs&#x2F;profile-guided-optimization</a>，LLVM 的 PGO 主要分为 2 种：</p>
+<ul>
+<li>代码插桩（<a target="_blank" rel="noopener" href="https://clang.llvm.org/docs/UsersManual.html#profiling-with-instrumentation">Profiling with Instrumentation</a>）<ul>
+<li>增加编译参数 <code>-fprofile-instr-generate</code></li>
+<li>运行特定的 benchmark 负载，令程序自动采集 profile 数据（缺点是程序运行较慢）</li>
+<li>重新编译时指定 profile 数据 <code>-fprofile-instr-use=&lt;xxx.profdata&gt;</code></li>
+</ul>
+</li>
+<li>运行时采样（<a target="_blank" rel="noopener" href="https://clang.llvm.org/docs/UsersManual.html#using-sampling-profilers">Using Sampling Profilers</a>）<ul>
+<li>增加编译参数 <code>-gline-tables-only -fdebug-info-for-profiling -funique-internal-linkage-names</code>，增加链接参数 <code>-Wl,--no-rosegment</code></li>
+<li>正常部署运行程序，利用 <a target="_blank" rel="noopener" href="https://perf.wiki.kernel.org/index.php/Main_Page">Linux Perf profiler</a> 采集实际负载下的 perf 数据<ul>
+<li>较为推荐在支持 LBR（Last Branch Record）的平台上使用 -b 参数令 Perf 记录调用链信息，从而提升 perf 数据的精度</li>
+</ul>
+</li>
+<li>利用 <a target="_blank" rel="noopener" href="https://github.com/google/autofdo">AutoFDO</a> 将 perf 数据转换为 LLVM 格式的 profile 数据</li>
+<li>重新编译时指定 profile 数据 <code>-fprofile-sample-use=&lt;profile.prof&gt;</code></li>
+</ul>
+</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">perf record -p &lt;pid&gt; -e cycles:up -j any,u -a -o &lt;perf.data&gt; -- <span class="built_in">sleep</span> 180</span><br><span class="line">perf record -e cycles:u -j any,u -o &lt;perf.data&gt; -- &lt;executable&gt; &lt;args&gt; ...</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">create_llvm_prof --profile &lt;perf.data&gt; --binary &lt;binary&gt; --out=&lt;profile.prof&gt;</span><br></pre></td></tr></table></figure>
+
+<p><strong>采用代码插桩的方式对程序性能有较大影响，且无法采集真实环境数据，所以在实践中较为推荐运行时采样，即程序发布后采集线上真实 profile 数据并依此迭代更新（类似 Java 的运行时优化）。</strong></p>
+<h3 id="案例（7-0）"><a href="#案例（7-0）" class="headerlink" title="案例（7.0）"></a>案例（7.0）</h3><p>该案例中虚函数 <code>Extend::foo</code> 被调用的频率明显高于 <code>Base::foo</code>，正常的 O3 优化可以按照一定的步长展开循环，但无法在运行时预测分支。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// fdo-test.cpp</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;chrono&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;cstdio&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;vector&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">Base</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="function"><span class="keyword">virtual</span> <span class="type">void</span> <span class="title">foo</span><span class="params">(<span class="type">int</span> &amp; x)</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        x += <span class="number">-1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">virtual</span> ~<span class="built_in">Base</span>() = <span class="keyword">default</span>;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">struct</span> <span class="title class_">Extend</span> : Base</span><br><span class="line">&#123;</span><br><span class="line">    <span class="function"><span class="type">void</span> <span class="title">foo</span><span class="params">(<span class="type">int</span> &amp; x)</span> <span class="keyword">override</span></span></span><br><span class="line"><span class="function">    </span>&#123;</span><br><span class="line">        x += <span class="number">1</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    std::vector&lt;Base&gt; a;</span><br><span class="line">    std::vector&lt;Extend&gt; b;</span><br><span class="line">    std::vector&lt;Base *&gt; c;</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="number">100</span>; ++i)</span><br><span class="line">        &#123;</span><br><span class="line">            a.<span class="built_in">emplace_back</span>(Base&#123;&#125;);</span><br><span class="line">            <span class="keyword">for</span> (<span class="type">int</span> j = <span class="number">0</span>; j &lt; <span class="number">100</span>; ++j)</span><br><span class="line">            &#123;</span><br><span class="line">                b.<span class="built_in">emplace_back</span>(Extend&#123;&#125;);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">auto</span> &amp; x : a)</span><br><span class="line">            c.<span class="built_in">emplace_back</span>(&amp;x);</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">auto</span> &amp; x : b)</span><br><span class="line">            c.<span class="built_in">emplace_back</span>(&amp;x);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">auto</span> start = std::chrono::steady_clock::<span class="built_in">now</span>();</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="type">int</span> res = <span class="number">0</span>;</span><br><span class="line">        <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="number">100000</span>; ++i)</span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">auto</span> &amp; x : c)</span><br><span class="line">            &#123;</span><br><span class="line">                x-&gt;<span class="built_in">foo</span>(res);</span><br><span class="line">            &#125;</span><br><span class="line">        std::<span class="built_in">printf</span>(<span class="string">&quot;%d\n&quot;</span>, res);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">auto</span> end = std::chrono::steady_clock::<span class="built_in">now</span>();</span><br><span class="line">    std::<span class="built_in">printf</span>(<span class="string">&quot;time cost %lld ms\n&quot;</span>, std::chrono::<span class="built_in">duration_cast</span>&lt;std::chrono::milliseconds&gt;(end - start).<span class="built_in">count</span>());</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">clang ./fdo-test.cpp -O3 -lstdc++ -Wl,--no-rosegment -gline-tables-only -fdebug-info-for-profiling -funique-internal-linkage-names -o ori.out -flto=thin -fvisibility=hidden -fvisibility-inlines-hidden -fwhole-program-vtables -fsplit-lto-unit -DNDEBUG -Rpass=<span class="string">&#x27;.*&#x27;</span> &gt;pass.ori 2&gt;&amp;1</span><br><span class="line">perf record -e cycles:up -j any,u -a -o test-perf.data -- ./ori.out</span><br><span class="line">create_llvm_prof --profile test-perf.data --binary ./ori.out --out=test.prof</span><br><span class="line">clang ./fdo-test.cpp -O3 -lstdc++ -Wl,--no-rosegment -gline-tables-only -fdebug-info-for-profiling -funique-internal-linkage-names -flto=thin -fvisibility=hidden -fvisibility-inlines-hidden -fwhole-program-vtables -fsplit-lto-unit -DNDEBUG -o fdo.out -fprofile-sample-use=./test.prof -Rpass=<span class="string">&#x27;.*&#x27;</span> &gt;pass.new 2&gt;&amp;1</span><br></pre></td></tr></table></figure>
+
+<p>FDO 优化效果：编译器根据虚函数调用频率执行 <code>Promote indirect call</code> 优化，实现去虚拟化。</p>
+<ul>
+<li>2012d8: 对比虚函数地址和 <code>&lt;_ZN6Extend3fooERi&gt;</code> 函数地址是否相同</li>
+<li>2012de: 如果比较相同则直接跳转到 <code>2012c0</code></li>
+<li>2012c0: 内联实现 <code>&lt;_ZN6Extend3fooERi&gt;</code></li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">./ori.out</span><br><span class="line">990000000</span><br><span class="line">time cost 2688 ms</span><br><span class="line"></span><br><span class="line">./fdo.out</span><br><span class="line">990000000</span><br><span class="line">time cost 2581 ms</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># pass.new</span></span><br><span class="line">./fdo-test.cpp:48:20: Promote indirect call to _ZN6Extend3fooERi with count 63471 out of 64151</span><br><span class="line"></span><br><span class="line"><span class="comment"># objdump -d fdo.out</span></span><br><span class="line">...</span><br><span class="line">  201293:       e8 48 08 00 00          callq  201ae0 &lt;_ZNSt3__16chrono12steady_clock3nowEv@plt&gt;</span><br><span class="line">  201298:       49 89 c6                mov    %rax,%r14</span><br><span class="line">  20129b:       c7 44 24 20 00 00 00    movl   <span class="variable">$0x0</span>,0x20(%rsp)</span><br><span class="line">  2012a2:       00 </span><br><span class="line">  2012a3:       48 8b 2c 24             mov    (%rsp),%rbp</span><br><span class="line">  2012a7:       48 8b 5c 24 08          mov    0x8(%rsp),%rbx</span><br><span class="line">  2012ac:       48 39 <span class="built_in">dd</span>                cmp    %rbx,%rbp</span><br><span class="line">  2012af:       0f 84 ec 00 00 00       je     2013a1 &lt;main+0x471&gt;</span><br><span class="line">  2012b5:       45 31 ff                xor    %r15d,%r15d</span><br><span class="line">  2012b8:       4c 8d 64 24 20          lea    0x20(%rsp),%r12</span><br><span class="line">  2012bd:       eb 0a                   jmp    2012c9 &lt;main+0x399&gt;</span><br><span class="line">  2012bf:       90                      nop</span><br><span class="line">  2012c0:       83 44 24 20 01          addl   <span class="variable">$0x1</span>,0x20(%rsp)</span><br><span class="line">  2012c5:       48 83 c5 08             add    <span class="variable">$0x8</span>,%rbp</span><br><span class="line">  2012c9:       48 39 <span class="built_in">dd</span>                cmp    %rbx,%rbp</span><br><span class="line">  2012cc:       74 1d                   je     2012eb &lt;main+0x3bb&gt;</span><br><span class="line">  2012ce:       48 8b 7d 00             mov    0x0(%rbp),%rdi</span><br><span class="line">  2012d2:       48 8b 07                mov    (%rdi),%rax</span><br><span class="line">  2012d5:       48 8b 00                mov    (%rax),%rax</span><br><span class="line">  2012d8:       48 3d 10 1a 20 00       cmp    <span class="variable">$0x201a10</span>,%rax</span><br><span class="line">  2012de:       74 e0                   je     2012c0 &lt;main+0x390&gt;</span><br><span class="line">  2012e0:       4c 89 e6                mov    %r12,%rsi</span><br><span class="line">  2012e3:       ff d0                   callq  *%rax</span><br><span class="line">  2012e5:       48 83 c5 08             add    <span class="variable">$0x8</span>,%rbp</span><br><span class="line">  2012e9:       eb de                   jmp    2012c9 &lt;main+0x399&gt;</span><br><span class="line">  2012eb:       41 83 c7 01             add    <span class="variable">$0x1</span>,%r15d</span><br><span class="line">  2012ef:       41 81 ff a0 86 01 00    cmp    <span class="variable">$0x186a0</span>,%r15d</span><br><span class="line">  2012f6:       74 0b                   je     201303 &lt;main+0x3d3&gt;</span><br><span class="line">  2012f8:       48 8b 2c 24             mov    (%rsp),%rbp</span><br><span class="line">  2012fc:       48 8b 5c 24 08          mov    0x8(%rsp),%rbx</span><br><span class="line">  201301:       eb c6                   jmp    2012c9 &lt;main+0x399&gt;</span><br><span class="line">  201303:       8b 74 24 20             mov    0x20(%rsp),%esi</span><br><span class="line">  201307:       bf af 0a 20 00          mov    <span class="variable">$0x200aaf</span>,%edi</span><br><span class="line">  20130c:       31 c0                   xor    %eax,%eax</span><br><span class="line">  20130e:       e8 <span class="built_in">dd</span> 07 00 00          callq  201af0 &lt;<span class="built_in">printf</span>@plt&gt;</span><br><span class="line">  201313:       e8 c8 07 00 00          callq  201ae0 &lt;_ZNSt3__16chrono12steady_clock3nowEv@plt&gt;</span><br><span class="line">...</span><br><span class="line">0000000000201a10 &lt;_ZN6Extend3fooERi&gt;:</span><br><span class="line">  201a10:       ff 06                   incl   (%rsi)</span><br><span class="line">  201a12:       c3                      retq   </span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<h3 id="案例（7-1）"><a href="#案例（7-1）" class="headerlink" title="案例（7.1）"></a>案例（7.1）</h3><p>TiFlash 以 commit <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/commit/5b61ae70550624d3bf0b5ca6bac89013ed5a6a4b">5b61ae70550624d3bf0b5ca6bac89013ed5a6a4b</a> 为例</p>
+<ul>
+<li>测试工具为 <a target="_blank" rel="noopener" href="https://github.com/pingcap/go-tpc/blob/69c6de2bd5157131427f6a31e083a1767a59002f/tpch/query.go">go-tpc</a>，并以 tpch 负载用于 perf 采样和优化验证</li>
+<li>单节点 tpch 10G 数据</li>
+<li>通过 cgroup 限制程序最多使用 5 核</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> -p /sys/fs/cgroup/cpu/pgo_test</span><br><span class="line">lsof -i:9000 | grep <span class="string">&#x27;TiFlash&#x27;</span> | grep -v <span class="string">&#x27;grep&#x27;</span> | awk <span class="string">&#x27;&#123;print $2&#125;&#x27;</span> &gt; /sys/fs/cgroup/cpu/pgo_test/cgroup.procs</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;500000&quot;</span> &gt; /sys/fs/cgroup/cpu/pgo_test/cpu.cfs_quota_us</span><br></pre></td></tr></table></figure>
+
+<p>测试结果显示，对于重计算的场景例如 Q1，FDO+LTO 比起 LTO 的性能提升为 8.98%，相对于未做任何优化的版本提升 13.46%。Q13、Q18 之类的查询也因为聚合&#x2F;过滤等计算占比较大获得一定的收益。而其他查询受计算模式中资源调度、数据瓶颈等因素影响存在一定的波动，优化效果不如 Q1 那么明显。</p>
+<table>
+<thead>
+<tr>
+<th>Time Cost(s)</th>
+<th>original</th>
+<th>LTO</th>
+<th>FDO+LTO</th>
+<th></th>
+<th>FDO+LTO : LTO</th>
+<th>FDO+LTO : original</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Q1</td>
+<td>6.32</td>
+<td>6.07</td>
+<td>5.57</td>
+<td></td>
+<td>8.98%</td>
+<td>13.46%</td>
+</tr>
+<tr>
+<td>Q2</td>
+<td>2.99</td>
+<td>2.99</td>
+<td>2.92</td>
+<td></td>
+<td>2.40%</td>
+<td>2.40%</td>
+</tr>
+<tr>
+<td>Q3</td>
+<td>2.79</td>
+<td>2.65</td>
+<td>2.65</td>
+<td></td>
+<td>0.00%</td>
+<td>5.28%</td>
+</tr>
+<tr>
+<td>Q4</td>
+<td>1.91</td>
+<td>2.05</td>
+<td>1.85</td>
+<td></td>
+<td>10.81%</td>
+<td>3.24%</td>
+</tr>
+<tr>
+<td>Q6</td>
+<td>0.91</td>
+<td>0.91</td>
+<td>0.84</td>
+<td></td>
+<td>8.33%</td>
+<td>8.33%</td>
+</tr>
+<tr>
+<td>Q7</td>
+<td>2.38</td>
+<td>2.32</td>
+<td>2.32</td>
+<td></td>
+<td>0.00%</td>
+<td>2.59%</td>
+</tr>
+<tr>
+<td>Q8</td>
+<td>4.8</td>
+<td>4.73</td>
+<td>4.73</td>
+<td></td>
+<td>0.00%</td>
+<td>1.48%</td>
+</tr>
+<tr>
+<td>Q9</td>
+<td>16.81</td>
+<td>16.54</td>
+<td>16.48</td>
+<td></td>
+<td>0.36%</td>
+<td>2.00%</td>
+</tr>
+<tr>
+<td>Q10</td>
+<td>3.72</td>
+<td>3.72</td>
+<td>3.66</td>
+<td></td>
+<td>1.64%</td>
+<td>1.64%</td>
+</tr>
+<tr>
+<td>Q11</td>
+<td>0.5</td>
+<td>0.5</td>
+<td>0.5</td>
+<td></td>
+<td>0.00%</td>
+<td>0.00%</td>
+</tr>
+<tr>
+<td>Q12</td>
+<td>1.98</td>
+<td>1.91</td>
+<td>1.85</td>
+<td></td>
+<td>3.24%</td>
+<td>7.03%</td>
+</tr>
+<tr>
+<td>Q13</td>
+<td>4.66</td>
+<td>4.6</td>
+<td>4.33</td>
+<td></td>
+<td>6.24%</td>
+<td>7.62%</td>
+</tr>
+<tr>
+<td>Q14</td>
+<td>1.04</td>
+<td>1.11</td>
+<td>0.97</td>
+<td></td>
+<td>14.43%</td>
+<td>7.22%</td>
+</tr>
+<tr>
+<td>Q15</td>
+<td>2.05</td>
+<td>1.98</td>
+<td>2.11</td>
+<td></td>
+<td>-6.16%</td>
+<td>-2.84%</td>
+</tr>
+<tr>
+<td>Q16</td>
+<td>1.04</td>
+<td>1.04</td>
+<td>0.97</td>
+<td></td>
+<td>7.22%</td>
+<td>7.22%</td>
+</tr>
+<tr>
+<td>Q17</td>
+<td>5.67</td>
+<td>5.8</td>
+<td>5.67</td>
+<td></td>
+<td>2.29%</td>
+<td>0.00%</td>
+</tr>
+<tr>
+<td>Q18</td>
+<td>8.62</td>
+<td>8.41</td>
+<td>7.99</td>
+<td></td>
+<td>5.26%</td>
+<td>7.88%</td>
+</tr>
+<tr>
+<td>Q19</td>
+<td>3.12</td>
+<td>3.05</td>
+<td>3.05</td>
+<td></td>
+<td>0.00%</td>
+<td>2.30%</td>
+</tr>
+<tr>
+<td>Q20</td>
+<td>1.58</td>
+<td>1.58</td>
+<td>1.64</td>
+<td></td>
+<td>-3.66%</td>
+<td>-3.66%</td>
+</tr>
+<tr>
+<td>Q21</td>
+<td>2.99</td>
+<td>2.85</td>
+<td>2.89</td>
+<td></td>
+<td>-1.38%</td>
+<td>3.46%</td>
+</tr>
+<tr>
+<td>Q22</td>
+<td>0.64</td>
+<td>0.64</td>
+<td>0.5</td>
+<td></td>
+<td>28.00%</td>
+<td>28.00%</td>
+</tr>
+</tbody></table>
 <h2 id="Post-link-Optimizer"><a href="#Post-link-Optimizer" class="headerlink" title="Post-link Optimizer"></a>Post-link Optimizer</h2><p>TBD</p>
 <h2 id="编译缓存"><a href="#编译缓存" class="headerlink" title="编译缓存"></a>编译缓存</h2><p><a target="_blank" rel="noopener" href="https://ccache.dev/">Ccache</a> 作为一种编译器缓存用于加速重编译过程。<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/eaf1a4cf886d1d5a86d04ef14eff956778ab4911/cmake/find_ccache.cmake">tiflash&#x2F;cmake&#x2F;find_ccache.cmake</a> 也默认开启这一优化项来加速 CI 流程。C++ 的特性决定了头文件耦合程度会大幅影响编译缓存命中率，所以问题的核心又回到了 <a href="#%E5%A4%B4%E6%96%87%E4%BB%B6%E4%BC%98%E5%8C%96">头文件优化</a>。</p>
 <p>根据文档 <a target="_blank" rel="noopener" href="https://ccache.dev/manual/3.2.4.html#_precompiled_headers">CCACHE - Precompiled headers</a>，ccache 配合 PCH 一起使用时，需要注意设置参数 <code>sloppiness=pch_defines,time_macros</code>。<br>在实践中，我们发现 ccache 默认处理 PCH 时会判断相关文件的修改时间，当 PCH 中包含编译期生成的代码时（例如 protobuf ）会导致相关目标文件缓存失败，对此需要进行更细粒度的划分和针对性调整。</p>
