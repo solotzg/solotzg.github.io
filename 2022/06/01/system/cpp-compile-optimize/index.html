@@ -29,7 +29,7 @@
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://solotzg.github.io/images/speedscope.app-example.gif">
 <meta property="article:published_time" content="2022-06-01T04:09:08.000Z">
-<meta property="article:modified_time" content="2022-07-01T04:00:41.094Z">
+<meta property="article:modified_time" content="2022-07-14T09:10:02.290Z">
 <meta property="article:author" content="Zhigao Tong">
 <meta property="article:tag" content="TiFlash">
 <meta property="article:tag" content="Linux">
@@ -258,7 +258,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-07-01 12:00:41" itemprop="dateModified" datetime="2022-07-01T12:00:41+08:00">2022-07-01</time>
+      <time title="Modified: 2022-07-14 17:10:02" itemprop="dateModified" datetime="2022-07-14T17:10:02+08:00">2022-07-14</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -306,8 +306,8 @@
 <p>结果如下，前端居然比后端的总耗时还大，这非常 <strong>不合理</strong>。以下各个章节将针对此进行分析并简述优化过程。</p>
 <h2 id="ClangBuildAnalyzer-分析结果（未优化）"><a href="#ClangBuildAnalyzer-分析结果（未优化）" class="headerlink" title="ClangBuildAnalyzer 分析结果（未优化）"></a>ClangBuildAnalyzer 分析结果（未优化）</h2><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><span class="line">**** Time summary:</span><br><span class="line">Compilation (5485 times):</span><br><span class="line">  Parsing (frontend):         7181.8 s</span><br><span class="line">  Codegen &amp; opts (backend):   6224.5 s</span><br><span class="line"></span><br><span class="line">**** Files that took longest to parse (compiler frontend):</span><br><span class="line">185258 ms: /data2/work/build-llvm-tiflash/dbms/src/Flash/CMakeFiles/flash_service.dir/Coprocessor/DAGExpressionAnalyzerHelper.cpp.o</span><br><span class="line">182847 ms: /data2/work/build-llvm-tiflash/dbms/src/Functions/CMakeFiles/clickhouse_functions.dir/FunctionsTiDBConversion.cpp.o</span><br><span class="line">181468 ms: /data2/work/build-llvm-tiflash/dbms/src/Flash/CMakeFiles/flash_service.dir/Coprocessor/DAGExpressionAnalyzer.cpp.o</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">**** Files that took longest to codegen (compiler backend):</span><br><span class="line">406975 ms: /data2/work/build-llvm-tiflash/dbms/src/Functions/CMakeFiles/clickhouse_functions.dir/divide.cpp.o</span><br><span class="line">205837 ms: /data2/work/build-llvm-tiflash/dbms/src/Functions/CMakeFiles/clickhouse_functions.dir/FunctionsComparison.cpp.o</span><br><span class="line">205416 ms: /data2/work/build-llvm-tiflash/dbms/src/Functions/CMakeFiles/clickhouse_functions.dir/FunctionsTiDBConversion.cpp.o</span><br><span class="line">179111 ms: /data2/work/build-llvm-tiflash/dbms/src/Functions/CMakeFiles/clickhouse_functions.dir/modulo.cpp.o</span><br><span class="line">142676 ms: /data2/work/build-llvm-tiflash/dbms/CMakeFiles/dbms.dir/src/Dictionaries/CacheDictionary.cpp.o</span><br><span class="line">133467 ms: /data2/work/build-llvm-tiflash/dbms/src/Functions/CMakeFiles/clickhouse_functions.dir/least.cpp.o</span><br><span class="line">131571 ms: /data2/work/build-llvm-tiflash/dbms/src/Functions/CMakeFiles/clickhouse_functions.dir/greatest.cpp.o</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">**** Templates that took longest to instantiate:</span><br><span class="line">247991 ms: DB::FunctionTiDBCast::createWrapper&lt;false&gt; (3 times, avg 82663 ms)</span><br><span class="line">240476 ms: DB::FunctionTiDBCast::createWrapper&lt;true&gt; (3 times, avg 80158 ms)</span><br><span class="line">228596 ms: std::__function::__func&lt;(lambda at /root/work/tiflash/dbms/src/Functions/FunctionsTiDBC... (7200 times, avg 31 ms)</span><br><span class="line">227424 ms: std::__function::__func&lt;(lambda at /root/work/tiflash/dbms/src/Functions/FunctionsTiDBC... (7200 times, avg 31 ms)</span><br><span class="line">194991 ms: std::function&lt;void (DB::Block &amp;, const std::vector&lt;unsigned long&gt; &amp;, unsigned long, bool, const ti... (2400 times, avg 81 ms)</span><br><span class="line">194077 ms: std::function&lt;void (DB::Block &amp;, const std::vector&lt;unsigned long&gt; &amp;, unsigned long, bool, const ti... (2400 times, avg 80 ms)</span><br><span class="line">193740 ms: std::__function::__value_func&lt;void (DB::Block &amp;, const std::vector&lt;unsigned long&gt; &amp;, unsigned long... (2400 times, avg 80 ms)</span><br><span class="line">192884 ms: std::__function::__value_func&lt;void (DB::Block &amp;, const std::vector&lt;unsigned long&gt; &amp;, unsigned long... (2400 times, avg 80 ms)</span><br><span class="line">191873 ms: std::__function::__value_func&lt;void (DB::Block &amp;, const std::vector&lt;unsigned long&gt; &amp;, unsigned long... (2400 times, avg 79 ms)</span><br><span class="line">191093 ms: std::__function::__value_func&lt;void (DB::Block &amp;, const std::vector&lt;unsigned long&gt; &amp;, unsigned long... (2400 times, avg 79 ms)</span><br><span class="line">132499 ms: DB::castTypeToEither&lt;DB::DataTypeNumber&lt;unsigned char&gt;, DB::DataTypeNumber&lt;unsigned short&gt;, DB::Da... (20 times, avg 6624 ms)</span><br><span class="line">132198 ms: DB::castTypeToEither&lt;DB::DataTypeNumber&lt;unsigned char&gt;, DB::DataTypeNumber&lt;unsigned short&gt;, DB::Da... (320 times, avg 413 ms)</span><br><span class="line">131016 ms: std::__function::__alloc_func&lt;(lambda at /root/work/tiflash/dbms/src/Functions/Function... (7200 times, avg 18 ms)</span><br><span class="line">130531 ms: std::__function::__alloc_func&lt;(lambda at /root/work/tiflash/dbms/src/Functions/Function... (7200 times, avg 18 ms)</span><br><span class="line">128066 ms: DB::castTypeToEither&lt;DB::DataTypeNumber&lt;unsigned char&gt;, DB::DataTypeNumber&lt;unsigned short&gt;, DB::Da... (5120 times, avg 25 ms)</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">**** Template sets that took longest to instantiate:</span><br><span class="line">734148 ms: std::function&lt;$&gt;::function&lt;$&gt; (9422 times, avg 77 ms)</span><br><span class="line">729456 ms: std::__function::__value_func&lt;$&gt;::__value_func&lt;$&gt; (9422 times, avg 77 ms)</span><br><span class="line">598582 ms: std::__function::__func&lt;$&gt;::__func (9422 times, avg 63 ms)</span><br><span class="line">494799 ms: std::__function::__alloc_func&lt;$&gt;::__alloc_func (28266 times, avg 17 ms)</span><br><span class="line">488467 ms: DB::FunctionTiDBCast::createWrapper&lt;$&gt; (6 times, avg 81411 ms)</span><br><span class="line">419445 ms: DB::FunctionTiDBCast::createWrapperForDecimal&lt;$&gt; (480 times, avg 873 ms)</span><br><span class="line">381118 ms: std::forward_as_tuple&lt;$&gt; (39069 times, avg 9 ms)</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">**** Function sets that took longest to compile / optimize:</span><br><span class="line">31177 ms: DB::IAggregateFunctionHelper&lt;$&gt;::addBatchLookupTable8(unsigned long, char**, unsigned long, std::__1::function&lt;$&gt;, unsigned char const*, DB::IColumn const**, DB::Arena*) const (1250 times, avg 24 ms)</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">*** Expensive headers:</span><br><span class="line">1091837 ms: /root/work/tiflash/dbms/src/Common/FmtUtils.h (included 750 times, avg 1455 ms), included via:</span><br><span class="line">1022467 ms: /root/work/tiflash/libs/libcommon/include/common/StringRef.h (included 754 times, avg 1356 ms), included via:</span><br><span class="line">985876 ms: /root/work/tiflash/dbms/src/Common/Exception.h (included 748 times, avg 1318 ms), included via:</span><br><span class="line">974680 ms: /root/work/tiflash/dbms/src/Common/StackTrace.h (included 749 times, avg 1301 ms), included via:</span><br><span class="line">681167 ms: /data2/tiflash-env/sysroot/include/c++/v1/string (included 1903 times, avg 357 ms), included via:</span><br><span class="line">501559 ms: /data2/tiflash-env/sysroot/include/c++/v1/algorithm (included 1969 times, avg 254 ms), included via:</span><br><span class="line">498058 ms: /root/work/tiflash/dbms/src/Columns/IColumn.h (included 516 times, avg 965 ms), included via:</span><br><span class="line">422329 ms: /root/work/tiflash/dbms/src/Core/Types.h (included 706 times, avg 598 ms), included via:</span><br><span class="line">405688 ms: /data2/tiflash-env/sysroot/include/c++/v1/functional (included 1971 times, avg 205 ms), included via:</span><br></pre></td></tr></table></figure>
 
-<h1 id="编译优化"><a href="#编译优化" class="headerlink" title="编译优化"></a>编译优化</h1><p>目前使用的工具链是 LLVM-13，链接器 <a target="_blank" rel="noopener" href="https://lld.llvm.org/">LLD</a> 性能已经足够好，所以链接过程的速度暂时构不成瓶颈（理论上还有更快的 <a target="_blank" rel="noopener" href="https://github.com/rui314/mold">mold</a>）。为获得更好的编译优化效果，较为推荐的是 <a href="#LTO%EF%BC%88Link-Time-Optimization%EF%BC%89">LTO</a>，不过代价就是更大的链接耗时和内存消耗。</p>
-<p>纯粹后端行为的可加速空间很小，不在本文讨论之列。就绝大部分实际场景而言（尤其是滥用模板的场景），少生成重复代码，便足以有效减轻后端的负担。</p>
+<h1 id="编译优化"><a href="#编译优化" class="headerlink" title="编译优化"></a>编译优化</h1><p>目前使用的工具链是 LLVM-13，链接器 <a target="_blank" rel="noopener" href="https://lld.llvm.org/">LLD</a> 性能已经足够好，所以链接过程的速度暂时构不成瓶颈（理论上还有更快的 <a target="_blank" rel="noopener" href="https://github.com/rui314/mold">mold</a>）。为获得更好的编译优化效果，较为推荐的是 <a href="#LTO%EF%BC%88Link-Time-Optimization%EF%BC%89">LTO</a>，不过代价就是更大的链接耗时和内存消耗。对于成熟的项目，利用 <a href="#PGO%EF%BC%88Profile-Guided-Optimization%EF%BC%89">PGO</a> 或 <a href="#Post-link-Optimizer">Post-link Optimizer</a> 也可获得可观的收益。</p>
+<p>就绝大部分实际场景而言（尤其是滥用模板的场景），少生成重复代码，便足以有效减轻后端的负担。</p>
 <h2 id="模板"><a href="#模板" class="headerlink" title="模板"></a>模板</h2><blockquote>
 <p>对于大多数 C++ 工程项目而言，<strong>滥用</strong> 模板是万恶之源。</p>
 </blockquote>
@@ -578,10 +578,13 @@
 
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># pass.new</span></span><br><span class="line">./fdo-test.cpp:48:20: Promote indirect call to _ZN6Extend3fooERi with count 63471 out of 64151</span><br><span class="line"></span><br><span class="line"><span class="comment"># objdump -d fdo.out</span></span><br><span class="line">...</span><br><span class="line">  201293:       e8 48 08 00 00          callq  201ae0 &lt;_ZNSt3__16chrono12steady_clock3nowEv@plt&gt;</span><br><span class="line">  201298:       49 89 c6                mov    %rax,%r14</span><br><span class="line">  20129b:       c7 44 24 20 00 00 00    movl   <span class="variable">$0x0</span>,0x20(%rsp)</span><br><span class="line">  2012a2:       00 </span><br><span class="line">  2012a3:       48 8b 2c 24             mov    (%rsp),%rbp</span><br><span class="line">  2012a7:       48 8b 5c 24 08          mov    0x8(%rsp),%rbx</span><br><span class="line">  2012ac:       48 39 <span class="built_in">dd</span>                cmp    %rbx,%rbp</span><br><span class="line">  2012af:       0f 84 ec 00 00 00       je     2013a1 &lt;main+0x471&gt;</span><br><span class="line">  2012b5:       45 31 ff                xor    %r15d,%r15d</span><br><span class="line">  2012b8:       4c 8d 64 24 20          lea    0x20(%rsp),%r12</span><br><span class="line">  2012bd:       eb 0a                   jmp    2012c9 &lt;main+0x399&gt;</span><br><span class="line">  2012bf:       90                      nop</span><br><span class="line">  2012c0:       83 44 24 20 01          addl   <span class="variable">$0x1</span>,0x20(%rsp)</span><br><span class="line">  2012c5:       48 83 c5 08             add    <span class="variable">$0x8</span>,%rbp</span><br><span class="line">  2012c9:       48 39 <span class="built_in">dd</span>                cmp    %rbx,%rbp</span><br><span class="line">  2012cc:       74 1d                   je     2012eb &lt;main+0x3bb&gt;</span><br><span class="line">  2012ce:       48 8b 7d 00             mov    0x0(%rbp),%rdi</span><br><span class="line">  2012d2:       48 8b 07                mov    (%rdi),%rax</span><br><span class="line">  2012d5:       48 8b 00                mov    (%rax),%rax</span><br><span class="line">  2012d8:       48 3d 10 1a 20 00       cmp    <span class="variable">$0x201a10</span>,%rax</span><br><span class="line">  2012de:       74 e0                   je     2012c0 &lt;main+0x390&gt;</span><br><span class="line">  2012e0:       4c 89 e6                mov    %r12,%rsi</span><br><span class="line">  2012e3:       ff d0                   callq  *%rax</span><br><span class="line">  2012e5:       48 83 c5 08             add    <span class="variable">$0x8</span>,%rbp</span><br><span class="line">  2012e9:       eb de                   jmp    2012c9 &lt;main+0x399&gt;</span><br><span class="line">  2012eb:       41 83 c7 01             add    <span class="variable">$0x1</span>,%r15d</span><br><span class="line">  2012ef:       41 81 ff a0 86 01 00    cmp    <span class="variable">$0x186a0</span>,%r15d</span><br><span class="line">  2012f6:       74 0b                   je     201303 &lt;main+0x3d3&gt;</span><br><span class="line">  2012f8:       48 8b 2c 24             mov    (%rsp),%rbp</span><br><span class="line">  2012fc:       48 8b 5c 24 08          mov    0x8(%rsp),%rbx</span><br><span class="line">  201301:       eb c6                   jmp    2012c9 &lt;main+0x399&gt;</span><br><span class="line">  201303:       8b 74 24 20             mov    0x20(%rsp),%esi</span><br><span class="line">  201307:       bf af 0a 20 00          mov    <span class="variable">$0x200aaf</span>,%edi</span><br><span class="line">  20130c:       31 c0                   xor    %eax,%eax</span><br><span class="line">  20130e:       e8 <span class="built_in">dd</span> 07 00 00          callq  201af0 &lt;<span class="built_in">printf</span>@plt&gt;</span><br><span class="line">  201313:       e8 c8 07 00 00          callq  201ae0 &lt;_ZNSt3__16chrono12steady_clock3nowEv@plt&gt;</span><br><span class="line">...</span><br><span class="line">0000000000201a10 &lt;_ZN6Extend3fooERi&gt;:</span><br><span class="line">  201a10:       ff 06                   incl   (%rsi)</span><br><span class="line">  201a12:       c3                      retq   </span><br><span class="line">...</span><br></pre></td></tr></table></figure>
 
-<h3 id="案例（7-1）"><a href="#案例（7-1）" class="headerlink" title="案例（7.1）"></a>案例（7.1）</h3><p>TiFlash 以 commit <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/commit/5b61ae70550624d3bf0b5ca6bac89013ed5a6a4b">5b61ae70550624d3bf0b5ca6bac89013ed5a6a4b</a> 为例</p>
+<h3 id="案例（7-1）"><a href="#案例（7-1）" class="headerlink" title="案例（7.1）"></a>案例（7.1）</h3><blockquote>
+<p>详见 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/pull/5160">tiflash#5160</a></p>
+</blockquote>
+<p>TiFlash 以 commit <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/commit/5b61ae70550624d3bf0b5ca6bac89013ed5a6a4b">5b61ae70550624d3bf0b5ca6bac89013ed5a6a4b</a> 为例</p>
 <ul>
 <li>测试工具为 <a target="_blank" rel="noopener" href="https://github.com/pingcap/go-tpc/blob/69c6de2bd5157131427f6a31e083a1767a59002f/tpch/query.go">go-tpc</a>，并以 tpch 负载用于 perf 采样和优化验证</li>
-<li>单节点 tpch 10G 数据</li>
+<li><strong>单节点</strong> tpch 10G 数据</li>
 <li>通过 cgroup 限制程序最多使用 5 核</li>
 </ul>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> -p /sys/fs/cgroup/cpu/pgo_test</span><br><span class="line">lsof -i:9000 | grep <span class="string">&#x27;TiFlash&#x27;</span> | grep -v <span class="string">&#x27;grep&#x27;</span> | awk <span class="string">&#x27;&#123;print $2&#125;&#x27;</span> &gt; /sys/fs/cgroup/cpu/pgo_test/cgroup.procs</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;500000&quot;</span> &gt; /sys/fs/cgroup/cpu/pgo_test/cpu.cfs_quota_us</span><br></pre></td></tr></table></figure>
@@ -789,6 +792,151 @@
 <td>28.00%</td>
 </tr>
 </tbody></table>
+<hr>
+<p>3 节点跑 TPCH-100，限制每个节点 CPU 使用上限 1000%，结果如下</p>
+<table>
+<thead>
+<tr>
+<th>Time Cost(s)</th>
+<th>LTO</th>
+<th>FDO+LTO</th>
+<th>FDO+LTO : LTO</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Q1</td>
+<td>12.08</td>
+<td>11.04</td>
+<td>9.42%</td>
+</tr>
+<tr>
+<td>Q2</td>
+<td>4.33</td>
+<td>4.26</td>
+<td>1.64%</td>
+</tr>
+<tr>
+<td>Q3</td>
+<td>8.22</td>
+<td>8.09</td>
+<td>1.61%</td>
+</tr>
+<tr>
+<td>Q4</td>
+<td>21.17</td>
+<td>21.64</td>
+<td>-2.17%</td>
+</tr>
+<tr>
+<td>Q5</td>
+<td>19.36</td>
+<td>19.83</td>
+<td>-2.37%</td>
+</tr>
+<tr>
+<td>Q6</td>
+<td>1.91</td>
+<td>1.85</td>
+<td>3.24%</td>
+</tr>
+<tr>
+<td>Q7</td>
+<td>9.83</td>
+<td>9.97</td>
+<td>-1.40%</td>
+</tr>
+<tr>
+<td>Q8</td>
+<td>11.98</td>
+<td>11.58</td>
+<td>3.45%</td>
+</tr>
+<tr>
+<td>Q9</td>
+<td>65.26</td>
+<td>64.32</td>
+<td>1.46%</td>
+</tr>
+<tr>
+<td>Q10</td>
+<td>10.57</td>
+<td>10.37</td>
+<td>1.93%</td>
+</tr>
+<tr>
+<td>Q11</td>
+<td>2.05</td>
+<td>2.05</td>
+<td>0.00%</td>
+</tr>
+<tr>
+<td>Q12</td>
+<td>5.2</td>
+<td>5.27</td>
+<td>-1.33%</td>
+</tr>
+<tr>
+<td>Q13</td>
+<td>12.72</td>
+<td>12.11</td>
+<td>5.04%</td>
+</tr>
+<tr>
+<td>Q14</td>
+<td>2.18</td>
+<td>2.11</td>
+<td>3.32%</td>
+</tr>
+<tr>
+<td>Q15</td>
+<td>4.13</td>
+<td>4.06</td>
+<td>1.72%</td>
+</tr>
+<tr>
+<td>Q16</td>
+<td>2.32</td>
+<td>2.25</td>
+<td>3.11%</td>
+</tr>
+<tr>
+<td>Q17</td>
+<td>18.29</td>
+<td>18.22</td>
+<td>0.38%</td>
+</tr>
+<tr>
+<td>Q18</td>
+<td>23.12</td>
+<td>22.85</td>
+<td>1.18%</td>
+</tr>
+<tr>
+<td>Q19</td>
+<td>5.87</td>
+<td>5.74</td>
+<td>2.26%</td>
+</tr>
+<tr>
+<td>Q20</td>
+<td>4.06</td>
+<td>4.13</td>
+<td>-1.69%</td>
+</tr>
+<tr>
+<td>Q21</td>
+<td>39.02</td>
+<td>39.29</td>
+<td>-0.69%</td>
+</tr>
+<tr>
+<td>Q22</td>
+<td>1.38</td>
+<td>1.31</td>
+<td>5.34%</td>
+</tr>
+</tbody></table>
+<p>除了 Q1，其他查询或多或少涉及到资源调度和等待，测试过程中无法全程打满 CPU，提升效果不如 Q1 那么明显。</p>
 <h2 id="Post-link-Optimizer"><a href="#Post-link-Optimizer" class="headerlink" title="Post-link Optimizer"></a>Post-link Optimizer</h2><p>TBD</p>
 <h2 id="编译缓存"><a href="#编译缓存" class="headerlink" title="编译缓存"></a>编译缓存</h2><p><a target="_blank" rel="noopener" href="https://ccache.dev/">Ccache</a> 作为一种编译器缓存用于加速重编译过程。<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/eaf1a4cf886d1d5a86d04ef14eff956778ab4911/cmake/find_ccache.cmake">tiflash&#x2F;cmake&#x2F;find_ccache.cmake</a> 也默认开启这一优化项来加速 CI 流程。C++ 的特性决定了头文件耦合程度会大幅影响编译缓存命中率，所以问题的核心又回到了 <a href="#%E5%A4%B4%E6%96%87%E4%BB%B6%E4%BC%98%E5%8C%96">头文件优化</a>。</p>
 <p>根据文档 <a target="_blank" rel="noopener" href="https://ccache.dev/manual/3.2.4.html#_precompiled_headers">CCACHE - Precompiled headers</a>，ccache 配合 PCH 一起使用时，需要注意设置参数 <code>sloppiness=pch_defines,time_macros</code>。<br>在实践中，我们发现 ccache 默认处理 PCH 时会判断相关文件的修改时间，当 PCH 中包含编译期生成的代码时（例如 protobuf ）会导致相关目标文件缓存失败，对此需要进行更细粒度的划分和针对性调整。</p>
