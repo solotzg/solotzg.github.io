@@ -1,0 +1,2918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.1.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="/lib/@fortawesome/fontawesome-free/css/all.min.css" integrity="sha256-DfWjNxDkM94fVBWx1H5BMMp0Zq7luBlV8QRcSES7s+0=" crossorigin="anonymous">
+  <link rel="stylesheet" href="/lib/animate.css/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"solotzg.github.io","root":"/","images":"/images","scheme":"Mist","darkmode":false,"version":"8.11.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"manual","top_n_per_article":5,"unescape":false,"preload":false}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="In database systems, Collation specifies how data is sorted and compared in a database. Collation provides the sorting rules, case, and accent sensitivity properties for the data in the database.  在数">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Database Collation Optimization In TiDB | TiFlash">
+<meta property="og:url" content="https://solotzg.github.io/2022/11/26/pingcap/database-collation-optimization/index.html">
+<meta property="og:site_name" content="SOLOTZG">
+<meta property="og:description" content="In database systems, Collation specifies how data is sorted and compared in a database. Collation provides the sorting rules, case, and accent sensitivity properties for the data in the database.  在数">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2022-11-25T16:00:00.000Z">
+<meta property="article:modified_time" content="2022-11-29T07:36:24.518Z">
+<meta property="article:author" content="Zhigao Tong">
+<meta property="article:tag" content="PingCAP">
+<meta property="article:tag" content="TiFlash">
+<meta property="article:tag" content="Database">
+<meta property="article:tag" content="HTAP">
+<meta property="article:tag" content="Compute">
+<meta property="article:tag" content="SIMD">
+<meta property="article:tag" content="Collation">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://solotzg.github.io/2022/11/26/pingcap/database-collation-optimization/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://solotzg.github.io/2022/11/26/pingcap/database-collation-optimization/","path":"2022/11/26/pingcap/database-collation-optimization/","title":"Database Collation Optimization In TiDB | TiFlash"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Database Collation Optimization In TiDB | TiFlash | SOLOTZG</title>
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">SOLOTZG</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close" role="button">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Benchmark"><span class="nav-number">1.</span> <span class="nav-text">Benchmark</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#TPCH-100"><span class="nav-number">1.1.</span> <span class="nav-text">TPCH-100</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#One-TiFlash-Store"><span class="nav-number">1.1.1.</span> <span class="nav-text">One TiFlash Store</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Two-TiFlash-Store"><span class="nav-number">1.1.2.</span> <span class="nav-text">Two TiFlash Store</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ClickBench"><span class="nav-number">1.2.</span> <span class="nav-text">ClickBench</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#TBD-ClickBench-Enhancement"><span class="nav-number">1.2.1.</span> <span class="nav-text">[TBD] ClickBench Enhancement</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#Optimize-Aggregation-In-ClickBench"><span class="nav-number">1.2.1.1.</span> <span class="nav-text">Optimize Aggregation In ClickBench</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%BB%B6%E8%BF%9F%E7%89%A9%E5%8C%96"><span class="nav-number">1.2.1.2.</span> <span class="nav-text">延迟物化</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#JIT"><span class="nav-number">1.2.1.3.</span> <span class="nav-text">JIT</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Ossinsight%EF%BC%88PingCAP-%E5%86%85%E9%83%A8%E6%B5%8B%E8%AF%95%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">Ossinsight（PingCAP 内部测试）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BC%98%E5%8C%96%E8%BF%87%E7%A8%8B"><span class="nav-number">2.</span> <span class="nav-text">优化过程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%98%E5%8C%96-Multi-Key-Sort"><span class="nav-number">2.1.</span> <span class="nav-text">优化 Multi Key Sort</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%98%E5%8C%96-Aggregation-And-Join"><span class="nav-number">2.2.</span> <span class="nav-text">优化 Aggregation And Join</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CPU-Cache-%E8%B8%A9%E5%9D%91"><span class="nav-number">2.3.</span> <span class="nav-text">CPU Cache 踩坑</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Non-temporal-Memory-Copy"><span class="nav-number">2.3.1.</span> <span class="nav-text">Non-temporal Memory Copy</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%98%E5%8C%96-memcpy"><span class="nav-number">2.4.</span> <span class="nav-text">优化 memcpy</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Benchmark-of-avx2-inline-memcpy"><span class="nav-number">2.4.1.</span> <span class="nav-text">Benchmark of avx2_inline_memcpy</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%98%E5%8C%96-memcmp-memequal-memchr-strstr"><span class="nav-number">2.5.</span> <span class="nav-text">优化 memcmp memequal memchr strstr</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Implementation-Of-Mem-Utils"><span class="nav-number">2.5.1.</span> <span class="nav-text">Implementation Of Mem Utils</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Benchmark-Of-Mem-Utils"><span class="nav-number">2.5.2.</span> <span class="nav-text">Benchmark Of Mem Utils</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%98%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%AF%94%E8%BE%83"><span class="nav-number">2.6.</span> <span class="nav-text">优化字符串比较</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%AF%94%E8%BE%83"><span class="nav-number">2.6.1.</span> <span class="nav-text">字符串比较</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#constant-%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%AF%94%E8%BE%83"><span class="nav-number">2.6.2.</span> <span class="nav-text">constant 字符串比较</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%98%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%90%9C%E7%B4%A2"><span class="nav-number">2.7.</span> <span class="nav-text">优化字符串搜索</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%98%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%8E%92%E5%BA%8F"><span class="nav-number">2.8.</span> <span class="nav-text">优化字符串排序</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Zhigao Tong"
+      src="/images/avatar.gif">
+  <p class="site-author-name" itemprop="name">Zhigao Tong</p>
+  <div class="site-description" itemprop="description">Zhigao Tong's blog</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">8</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">25</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author site-overview-item animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/solotzg" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;solotzg" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:solotzg@gmail.com" title="E-Mail → mailto:solotzg@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://solotzg.github.io/2022/11/26/pingcap/database-collation-optimization/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Zhigao Tong">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="SOLOTZG">
+      <meta itemprop="description" content="Zhigao Tong's blog">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Database Collation Optimization In TiDB | TiFlash | SOLOTZG">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Database Collation Optimization In TiDB | TiFlash
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+
+      <time title="Created: 2022-11-26 00:00:00" itemprop="dateCreated datePublished" datetime="2022-11-26T00:00:00+08:00">2022-11-26</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">Edited on</span>
+      <time title="Modified: 2022-11-29 15:36:24" itemprop="dateModified" datetime="2022-11-29T15:36:24+08:00">2022-11-29</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/PingCAP/" itemprop="url" rel="index"><span itemprop="name">PingCAP</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <blockquote>
+<p>In database systems, Collation specifies how data is sorted and compared in a database. Collation provides the sorting rules, case, and accent sensitivity properties for the data in the database.</p>
+</blockquote>
+<p>在数据库系统中，<code>CHARACTER SET</code>(aka <code>字符集</code>) 为一组字符和编码的集合，<code>COLLATION</code> 则表示字符排序|比较规则、大小写敏感等属性。参考 <a target="_blank" rel="noopener" href="https://dev.mysql.com/doc/refman/8.0/en/charset-mysql.html">Character Sets and Collations in MySQL</a>，MySQL 支持多种字符集，每种字符集包含多种 collation（默认使用一种）。TiDB 体系中默认采用字符集 <code>utf8mb4</code>，collation <code>utf8mb4_bin</code>。对于 TiFlash 这样的 OLAP 引擎而言，字符集相关规则引入的额外抽象必然会对性能产生较大影响，本文主要阐述优化 collation 的过程并在 Benchmark <code>TPCH</code> 和 <a target="_blank" rel="noopener" href="https://github.com/ClickHouse/ClickBench">ClickBench</a> 上验证效果。</p>
+<span id="more"></span>
+
+<p>需注意的点：</p>
+<ul>
+<li><a href="#CPU-Cache-%E8%B8%A9%E5%9D%91">CPU Cache</a></li>
+<li>SIMD<ul>
+<li>优化 <a href="#%E4%BC%98%E5%8C%96-memcpy">memcpy</a></li>
+<li>优化 <a href="#%E4%BC%98%E5%8C%96-memcmp-memequal-memchr-strstr">memcmp,memequal,memchr,strstr</a></li>
+<li>核心原则<ul>
+<li>越是用高级 SIMD 指令，越是要优先考虑小数据处理的性能</li>
+<li>当 CPU 成为瓶颈时，高级指令才能带来可观的性能提升</li>
+<li>内存对齐较为关键</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Devirtualization<ul>
+<li><a href="#%E4%BC%98%E5%8C%96-Multi-Key-Sort">Multi Key 排序</a></li>
+<li><a href="#%E4%BC%98%E5%8C%96-Aggregation-And-Join">Aggregation &amp; Join 相关场景</a></li>
+<li><a href="#%E4%BC%98%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%AF%94%E8%BE%83">字符串比较</a>，<a href="#%E4%BC%98%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%90%9C%E7%B4%A2">字符串搜索</a>，<a href="#%E4%BC%98%E5%8C%96%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%8E%92%E5%BA%8F">字符串排序</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="Benchmark"><a href="#Benchmark" class="headerlink" title="Benchmark"></a>Benchmark</h2><p>Overall</p>
+<ul>
+<li>TPCH-100：总体性能提升约 <strong>5.55%</strong> （结合 LTO）</li>
+<li>ClickBench：对于 TiFlash 已支持的查询，总体性能提升约 <strong>21.06%</strong></li>
+<li>Ossinsight（PingCAP 内部测试）：所用的字符串比较过滤等类似场景，性能提升约 <strong>46.58%～75.76%</strong></li>
+<li>当前优化主要面向 <code>BIN COLLATION</code>，并针对 TiDB 默认的 <code>UTF8MB4_BIN</code> &#x2F; <code>UTF8_BIN</code> 特殊优化<ul>
+<li>注意：ClickBench 数据集中，URL、Title、Referer、SearchPhrase、OriginalURL、OpenstatCampaignID、UTMCampaign、UTMContent 列均包含以空格（<code>0x20</code>）结尾的数据。按照当前 TiDB 体系的行为需 <a target="_blank" rel="noopener" href="https://docs.pingcap.com/zh/tidb/dev/character-set-and-collation#%E6%96%B0%E6%A1%86%E6%9E%B6%E4%B8%8B%E7%9A%84%E6%8E%92%E5%BA%8F%E8%A7%84%E5%88%99%E6%94%AF%E6%8C%81">裁剪掉末尾的空格</a>。处理到这类数据时必然产生额外开销，优化效果一般。</li>
+</ul>
+</li>
+<li><strong>本轮优化 不包含 CI COLLATION</strong></li>
+</ul>
+<h3 id="TPCH-100"><a href="#TPCH-100" class="headerlink" title="TPCH-100"></a>TPCH-100</h3><h4 id="One-TiFlash-Store"><a href="#One-TiFlash-Store" class="headerlink" title="One TiFlash Store"></a>One TiFlash Store</h4><ul>
+<li>TIFLASH x 1<ul>
+<li>memory limit in bytes: 207405139968</li>
+<li>cpu cores quota: 40</li>
+</ul>
+</li>
+<li>TIFLASH REPLICA x 2<ul>
+<li><code>ALTER TABLE &#123;...&#125; COMPACT TIFLASH REPLICA</code></li>
+</ul>
+</li>
+<li><code>set @@tidb_enforce_mpp = on</code></li>
+<li>同时对比测试移除 <a href="https://solotzg.github.io/2022/06/01/system/cpp-compile-optimize/#LTO%EF%BC%88Link-Time-Optimization%EF%BC%89">LTO 编译优化</a>（自 TiDB v6.1.0 引入）后的影响；<a href="https://solotzg.github.io/2022/06/01/system/cpp-compile-optimize/#PGO%EF%BC%88Profile-Guided-Optimization%EF%BC%89">PGO 优化</a> 当前暂无自动使用；</li>
+<li>测试程序 <a target="_blank" rel="noopener" href="https://github.com/pingcap/go-tpc/blob/f2917ada86809889a9fa49cc262da77c7001b8f4/tpch/query.go">go-tpc&#x2F;query.go · pingcap&#x2F;go-tpc</a></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original: rollback all PR in <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/issues/5294">pingcap&#x2F;tiflash#5294</a> from commit <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/commit/a0f986561a9a9442cc47e75cc9bb5437c614a4d4">a0f9865</a></th>
+<th>Optimized</th>
+<th>Improvement: (Original) &#x2F; (Optimized) - 1.0</th>
+<th></th>
+<th>Original + No LTO (Link Time Optimization)</th>
+<th>Improvement: (Original + No LTO) &#x2F; (Optimized) - 1.0</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Q1</td>
+<td>9.09</td>
+<td>8.42</td>
+<td>7.96%</td>
+<td>AGG() by multi STR; COLLATION;</td>
+<td>10</td>
+<td>18.76%</td>
+</tr>
+<tr>
+<td>Q2</td>
+<td>2.45</td>
+<td>2.38</td>
+<td>2.94%</td>
+<td></td>
+<td>2.52</td>
+<td>5.88%</td>
+</tr>
+<tr>
+<td>Q3</td>
+<td>5.6</td>
+<td>5.47</td>
+<td>2.38%</td>
+<td></td>
+<td>5.6</td>
+<td>2.38%</td>
+</tr>
+<tr>
+<td>Q4</td>
+<td>6.14</td>
+<td>6.07</td>
+<td>1.15%</td>
+<td></td>
+<td>6.24</td>
+<td>2.80%</td>
+</tr>
+<tr>
+<td>Q5</td>
+<td>13.52</td>
+<td>13.05</td>
+<td>3.60%</td>
+<td></td>
+<td>13.52</td>
+<td>3.60%</td>
+</tr>
+<tr>
+<td>Q6</td>
+<td>1.98</td>
+<td>1.98</td>
+<td>0.00%</td>
+<td></td>
+<td>2.01</td>
+<td>1.52%</td>
+</tr>
+<tr>
+<td>Q7</td>
+<td>6.34</td>
+<td>6.14</td>
+<td>3.26%</td>
+<td></td>
+<td>6.51</td>
+<td>6.03%</td>
+</tr>
+<tr>
+<td>Q8</td>
+<td>8.69</td>
+<td>8.36</td>
+<td>3.95%</td>
+<td></td>
+<td>8.93</td>
+<td>6.82%</td>
+</tr>
+<tr>
+<td>Q9</td>
+<td>38.42</td>
+<td>38.49</td>
+<td>-0.18%</td>
+<td></td>
+<td>38.82</td>
+<td>0.86%</td>
+</tr>
+<tr>
+<td>Q10</td>
+<td>6.95</td>
+<td>6.61</td>
+<td>5.14%</td>
+<td></td>
+<td>7.58</td>
+<td>14.67%</td>
+</tr>
+<tr>
+<td>Q11</td>
+<td>1.64</td>
+<td>1.58</td>
+<td>3.80%</td>
+<td></td>
+<td>1.71</td>
+<td>8.23%</td>
+</tr>
+<tr>
+<td>Q12</td>
+<td>4.4</td>
+<td>4.26</td>
+<td>3.29%</td>
+<td></td>
+<td>4.46</td>
+<td>4.69%</td>
+</tr>
+<tr>
+<td>Q13</td>
+<td>8.42</td>
+<td>7.82</td>
+<td>7.67%</td>
+<td>LIKE(); COLLATION;</td>
+<td>8.42</td>
+<td>7.67%</td>
+</tr>
+<tr>
+<td>Q14</td>
+<td>2.11</td>
+<td>2.11</td>
+<td>0.00%</td>
+<td></td>
+<td>2.21</td>
+<td>4.74%</td>
+</tr>
+<tr>
+<td>Q15</td>
+<td>4.46</td>
+<td>4.46</td>
+<td>0.00%</td>
+<td></td>
+<td>4.73</td>
+<td>6.05%</td>
+</tr>
+<tr>
+<td>Q16</td>
+<td>2.25</td>
+<td>2.11</td>
+<td>6.64%</td>
+<td>LIKE(); COLLATION;</td>
+<td>2.28</td>
+<td>8.06%</td>
+</tr>
+<tr>
+<td>Q17</td>
+<td>13.32</td>
+<td>12.78</td>
+<td>4.23%</td>
+<td></td>
+<td>13.32</td>
+<td>4.23%</td>
+</tr>
+<tr>
+<td>Q18</td>
+<td>18.09</td>
+<td>17.41</td>
+<td>3.91%</td>
+<td></td>
+<td>18.49</td>
+<td>6.20%</td>
+</tr>
+<tr>
+<td>Q19</td>
+<td>5.54</td>
+<td>4.66</td>
+<td>18.88%</td>
+<td>COLLATION</td>
+<td>5.6</td>
+<td>20.17%</td>
+</tr>
+<tr>
+<td>Q20</td>
+<td>2.99</td>
+<td>2.92</td>
+<td>2.40%</td>
+<td></td>
+<td>3.02</td>
+<td>3.42%</td>
+</tr>
+<tr>
+<td>Q21</td>
+<td>24.73</td>
+<td>24.26</td>
+<td>1.94%</td>
+<td></td>
+<td>25.4</td>
+<td>4.70%</td>
+</tr>
+<tr>
+<td>Q22</td>
+<td>1.85</td>
+<td>1.78</td>
+<td>3.93%</td>
+<td></td>
+<td>1.91</td>
+<td>7.30%</td>
+</tr>
+<tr>
+<td>SUM</td>
+<td>188.98</td>
+<td>183.12</td>
+<td><strong>3.20%</strong></td>
+<td></td>
+<td>193.28</td>
+<td><strong>5.55%</strong></td>
+</tr>
+</tbody></table>
+<h4 id="Two-TiFlash-Store"><a href="#Two-TiFlash-Store" class="headerlink" title="Two TiFlash Store"></a>Two TiFlash Store</h4><ul>
+<li>TIFLASH x 2<ul>
+<li>memory limit in bytes: 207405139968</li>
+<li>cpu cores quota: 40</li>
+</ul>
+</li>
+<li>TIFLASH REPLICA x 2<ul>
+<li><code>ALTER TABLE &#123;...&#125; COMPACT TIFLASH REPLICA</code></li>
+</ul>
+</li>
+<li><code>set @@tidb_enforce_mpp = on</code></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original: rollback all PR in <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/issues/5294">pingcap&#x2F;tiflash#5294</a> from commit <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/commit/a0f986561a9a9442cc47e75cc9bb5437c614a4d4">a0f9865</a></th>
+<th>Optimized</th>
+<th>Improvement: (Original) &#x2F; (Optimized) - 1.0</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Q1</td>
+<td>5.4</td>
+<td>4.97</td>
+<td>8.65%</td>
+</tr>
+<tr>
+<td>Q2</td>
+<td>1.91</td>
+<td>1.88</td>
+<td>1.60%</td>
+</tr>
+<tr>
+<td>Q3</td>
+<td>4.46</td>
+<td>4.4</td>
+<td>1.36%</td>
+</tr>
+<tr>
+<td>Q4</td>
+<td>6.61</td>
+<td>6.48</td>
+<td>2.01%</td>
+</tr>
+<tr>
+<td>Q5</td>
+<td>11.54</td>
+<td>11.11</td>
+<td>3.87%</td>
+</tr>
+<tr>
+<td>Q6</td>
+<td>1.01</td>
+<td>1.01</td>
+<td>0.00%</td>
+</tr>
+<tr>
+<td>Q7</td>
+<td>4.9</td>
+<td>4.73</td>
+<td>3.59%</td>
+</tr>
+<tr>
+<td>Q8</td>
+<td>8.36</td>
+<td>8.25</td>
+<td>1.33%</td>
+</tr>
+<tr>
+<td>Q9</td>
+<td>30.97</td>
+<td>30.06</td>
+<td>3.03%</td>
+</tr>
+<tr>
+<td>Q10</td>
+<td>5.87</td>
+<td>5.4</td>
+<td>8.70%</td>
+</tr>
+<tr>
+<td>Q11</td>
+<td>1.51</td>
+<td>1.44</td>
+<td>4.86%</td>
+</tr>
+<tr>
+<td>Q12</td>
+<td>2.55</td>
+<td>2.52</td>
+<td>1.19%</td>
+</tr>
+<tr>
+<td>Q13</td>
+<td>5.57</td>
+<td>5.34</td>
+<td>4.31%</td>
+</tr>
+<tr>
+<td>Q14</td>
+<td>1.17</td>
+<td>1.17</td>
+<td>0.00%</td>
+</tr>
+<tr>
+<td>Q15</td>
+<td>2.18</td>
+<td>2.21</td>
+<td>-1.36%</td>
+</tr>
+<tr>
+<td>Q16</td>
+<td>1.24</td>
+<td>1.21</td>
+<td>2.48%</td>
+</tr>
+<tr>
+<td>Q17</td>
+<td>9.5</td>
+<td>9.63</td>
+<td>-1.35%</td>
+</tr>
+<tr>
+<td>Q18</td>
+<td>12.82</td>
+<td>12.75</td>
+<td>0.55%</td>
+</tr>
+<tr>
+<td>Q19</td>
+<td>2.99</td>
+<td>2.52</td>
+<td>18.65%</td>
+</tr>
+<tr>
+<td>Q20</td>
+<td>2.15</td>
+<td>2.11</td>
+<td>1.90%</td>
+</tr>
+<tr>
+<td>Q21</td>
+<td>16.74</td>
+<td>16.27</td>
+<td>2.89%</td>
+</tr>
+<tr>
+<td>Q22</td>
+<td>1.01</td>
+<td>1.01</td>
+<td>0.00%</td>
+</tr>
+</tbody></table>
+<h3 id="ClickBench"><a href="#ClickBench" class="headerlink" title="ClickBench"></a>ClickBench</h3><ul>
+<li>TIFLASH x 1<ul>
+<li>memory limit in bytes: 207405139968</li>
+<li>cpu cores quota: 40</li>
+</ul>
+</li>
+<li>TIFLASH REPLICA x 2<ul>
+<li><code>ALTER TABLE &#123;...&#125; COMPACT TIFLASH REPLICA</code></li>
+</ul>
+</li>
+<li>Data source: <a target="_blank" rel="noopener" href="https://github.com/ClickHouse/ClickBench/tree/d661b49dffda015415366f0e12aa1ebe3424c311/mysql">ClickBench</a></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original: rollback all PR in <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/issues/5294">pingcap&#x2F;tiflash#5294</a> from commit <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/commit/a0f986561a9a9442cc47e75cc9bb5437c614a4d4">a0f9865</a></th>
+<th>Optimized</th>
+<th></th>
+<th>Improvement: (Original) &#x2F; (Optimized) - 1.0</th>
+<th>Use collation: Y (yes)</th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Q1</td>
+<td>0.276</td>
+<td>0.277</td>
+<td></td>
+<td>-0.36%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q2</td>
+<td>0.029</td>
+<td>0.0301</td>
+<td></td>
+<td>-3.65%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q3</td>
+<td>0.0675</td>
+<td>0.0653</td>
+<td></td>
+<td>3.37%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q4</td>
+<td>0.1813</td>
+<td>0.1788</td>
+<td></td>
+<td>1.40%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q5</td>
+<td>2.285</td>
+<td>2.255</td>
+<td></td>
+<td>1.33%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q6</td>
+<td>1.46</td>
+<td>1.36</td>
+<td></td>
+<td>7.35%</td>
+<td>Y</td>
+<td>优化单 STR 列 GROUP BY</td>
+</tr>
+<tr>
+<td>Q7</td>
+<td>0.1689</td>
+<td>0.1693</td>
+<td></td>
+<td>-0.24%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q8</td>
+<td>0.0391</td>
+<td>0.0381</td>
+<td></td>
+<td>2.62%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q9</td>
+<td>1.205</td>
+<td>1.175</td>
+<td></td>
+<td>2.55%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q10</td>
+<td>2.005</td>
+<td>2</td>
+<td></td>
+<td>0.25%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q11</td>
+<td>0.2722</td>
+<td>0.2521</td>
+<td></td>
+<td>7.97%</td>
+<td>Y</td>
+<td>短字符串比较过滤；优化 MEM UTILS 基础函数；</td>
+</tr>
+<tr>
+<td>Q12</td>
+<td>0.2936</td>
+<td>0.2731</td>
+<td></td>
+<td>7.51%</td>
+<td>Y</td>
+<td>同 Q11；优化多 STR 列 GROUP BY；</td>
+</tr>
+<tr>
+<td>Q13</td>
+<td>1.03</td>
+<td>0.9916</td>
+<td></td>
+<td>3.87%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q14</td>
+<td>1.96</td>
+<td>1.87</td>
+<td></td>
+<td>4.81%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q15</td>
+<td>1.105</td>
+<td>1.06</td>
+<td></td>
+<td>4.25%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q16</td>
+<td>1.08</td>
+<td>1.025</td>
+<td></td>
+<td>5.37%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q17</td>
+<td>3.475</td>
+<td>3.36</td>
+<td></td>
+<td>3.42%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q18</td>
+<td>2.865</td>
+<td>2.77</td>
+<td></td>
+<td>3.43%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q19</td>
+<td>0</td>
+<td>0</td>
+<td>ERROR: Out Of Memory Quota!extract 无法下推 TiFlash</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q20</td>
+<td>0.5935</td>
+<td>0.5773</td>
+<td></td>
+<td>2.81%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q21</td>
+<td>3.45</td>
+<td>0.8726</td>
+<td></td>
+<td>295.37%</td>
+<td>Y</td>
+<td>LIKE 表达式相关：优化字符串搜索算法；avx2 指令优化相关 MEM UTILS 基础函数；</td>
+</tr>
+<tr>
+<td>Q22</td>
+<td>3.57</td>
+<td>1.0151</td>
+<td></td>
+<td>251.69%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q23</td>
+<td>6.645</td>
+<td>1.815</td>
+<td></td>
+<td>266.12%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q24</td>
+<td>6.665</td>
+<td>4.945</td>
+<td>SELECT * … ORDER BY … LIMIT 10;当前需要读全表数据，耗时占比较大，对于 LIMIT 数量较小的场景可延迟物化（先从TiFlash 获取主键，再读 TiKV）；</td>
+<td>34.78%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q25</td>
+<td>0.4399</td>
+<td>0.3675</td>
+<td></td>
+<td>19.70%</td>
+<td>Y</td>
+<td>同 Q11</td>
+</tr>
+<tr>
+<td>Q26</td>
+<td>0.2029</td>
+<td>0.1737</td>
+<td></td>
+<td>16.81%</td>
+<td>Y</td>
+<td>同 Q11</td>
+</tr>
+<tr>
+<td>Q27</td>
+<td>0.4221</td>
+<td>0.3731</td>
+<td></td>
+<td>13.13%</td>
+<td>Y</td>
+<td>同 Q11；优化多 key 排序；</td>
+</tr>
+<tr>
+<td>Q28</td>
+<td>1.345</td>
+<td>1.305</td>
+<td></td>
+<td>3.07%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q29</td>
+<td>0</td>
+<td>0</td>
+<td>ERROR: Out Of Memory Quota!regexp_replace 无法下推 TiFlash</td>
+<td></td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q30</td>
+<td>9.655</td>
+<td>9.54</td>
+<td></td>
+<td>1.21%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q31</td>
+<td>0.8385</td>
+<td>0.7974</td>
+<td></td>
+<td>5.15%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q32</td>
+<td>1.195</td>
+<td>1.185</td>
+<td></td>
+<td>0.84%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q33</td>
+<td>6.98</td>
+<td>6.915</td>
+<td></td>
+<td>0.94%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q34</td>
+<td>6.16</td>
+<td>5.945</td>
+<td></td>
+<td>3.62%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q35</td>
+<td>6.115</td>
+<td>5.815</td>
+<td></td>
+<td>5.16%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q36</td>
+<td>1.385</td>
+<td>1.37</td>
+<td></td>
+<td>1.09%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q37</td>
+<td>0.2158</td>
+<td>0.2122</td>
+<td></td>
+<td>1.70%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q38</td>
+<td>0.1363</td>
+<td>0.1328</td>
+<td></td>
+<td>2.64%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q39</td>
+<td>0.1134</td>
+<td>0.1071</td>
+<td></td>
+<td>5.88%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q40</td>
+<td>0.4411</td>
+<td>0.4261</td>
+<td></td>
+<td>3.52%</td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Q41</td>
+<td>0.0754</td>
+<td>0.0746</td>
+<td></td>
+<td>1.07%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q42</td>
+<td>0.0572</td>
+<td>0.0565</td>
+<td></td>
+<td>1.24%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q43</td>
+<td>0.1397</td>
+<td>0.1341</td>
+<td></td>
+<td>4.18%</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>SUM</td>
+<td>76.6384</td>
+<td>63.3055</td>
+<td></td>
+<td><strong>21.06%</strong></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<h4 id="TBD-ClickBench-Enhancement"><a href="#TBD-ClickBench-Enhancement" class="headerlink" title="[TBD] ClickBench Enhancement"></a>[TBD] ClickBench Enhancement</h4><h5 id="Optimize-Aggregation-In-ClickBench"><a href="#Optimize-Aggregation-In-ClickBench" class="headerlink" title="Optimize Aggregation In ClickBench"></a>Optimize Aggregation In ClickBench</h5><ul>
+<li>Q11<ul>
+<li><code>SELECT MobilePhoneModel, COUNT(DISTINCT UserID) AS u FROM hits WHERE MobilePhoneModel &lt;&gt; &#39;&#39; GROUP BY MobilePhoneModel ORDER BY u DESC LIMIT 10;</code></li>
+<li>GROUP BY: STR(MobilePhoneModel), INT(UserID)</li>
+</ul>
+</li>
+<li>Q12<ul>
+<li><code>SELECT MobilePhone, MobilePhoneModel, COUNT(DISTINCT UserID) AS u FROM hits WHERE MobilePhoneModel &lt;&gt; &#39;&#39; GROUP BY MobilePhone, MobilePhoneModel ORDER BY u DESC LIMIT 10;</code></li>
+<li>GROUP BY: INT(MobilePhone), STR(MobilePhoneModel), INT(UserID)</li>
+</ul>
+</li>
+<li>Q14<ul>
+<li><code>SELECT SearchPhrase, COUNT(DISTINCT UserID) AS u FROM hits WHERE SearchPhrase &lt;&gt; &#39;&#39; GROUP BY SearchPhrase ORDER BY u DESC LIMIT 10;</code></li>
+<li>GROUP BY: STR(SearchPhrase), INT(UserID)</li>
+</ul>
+</li>
+<li>Q15<ul>
+<li><code>SELECT SearchEngineID, SearchPhrase, COUNT(*) AS c FROM hits WHERE SearchPhrase &lt;&gt; &#39;&#39; GROUP BY SearchEngineID, SearchPhrase ORDER BY c DESC LIMIT 10;</code></li>
+<li>GROUP BY: INT(SearchEngineID), STR(SearchPhrase)</li>
+</ul>
+</li>
+<li>Q17, Q18<ul>
+<li>GROUP BY: INT(UserID), STR(SearchPhrase)</li>
+</ul>
+</li>
+<li>Q23<ul>
+<li><code>SELECT SearchPhrase, MIN(URL), MIN(Title), COUNT(*) AS c, COUNT(DISTINCT UserID) FROM hits WHERE Title LIKE &#39;%Google%&#39; AND URL NOT LIKE &#39;%.google.%&#39; AND SearchPhrase &lt;&gt; &#39;&#39; GROUP BY SearchPhrase ORDER BY c DESC LIMIT 10;</code></li>
+<li>GROUP BY: INT(UserID), STR(SearchPhrase)</li>
+<li>GROUP BY 非性能瓶颈</li>
+</ul>
+</li>
+<li>Q34, Q35<ul>
+<li><code>SELECT URL, COUNT(*) AS c FROM hits GROUP BY URL ORDER BY c DESC LIMIT 10;</code></li>
+<li>经典的 top-n url 问题，TiFlash 的执行计划会按照多节点 Exchange 后聚合汇总。如果仅考虑单节点，则可进一步缩短链路并优化。</li>
+</ul>
+</li>
+<li>Q40<ul>
+<li><code>SELECT TraficSourceID, SearchEngineID, AdvEngineID, CASE WHEN (SearchEngineID = 0 AND AdvEngineID = 0) THEN Referer ELSE &#39;&#39; END AS Src, URL AS Dst, COUNT(*) AS PageViews FROM hits WHERE CounterID = 62 AND EventDate &gt;= &#39;2013-07-01&#39; AND EventDate &lt;= &#39;2013-07-31&#39; AND IsRefresh = 0 GROUP BY TraficSourceID, SearchEngineID, AdvEngineID, Src, Dst ORDER BY PageViews DESC LIMIT 10 OFFSET 1000;</code></li>
+<li>GROUP BY: TraficSourceID, SearchEngineID, AdvEngineID, Src, Dst</li>
+</ul>
+</li>
+</ul>
+<h5 id="延迟物化"><a href="#延迟物化" class="headerlink" title="延迟物化"></a>延迟物化</h5><ul>
+<li>Q24：<code>SELECT * ... ORDER BY ... LIMIT ...</code> 当前需要读全表数据，耗时占比较大，对于 LIMIT 数量较小的场景可延迟物化（先从TiFlash 获取主键，再读 TiKV）</li>
+<li>改写为 <code>select * from hits where _tidb_rowid in (select _tidb_rowid FROM hits WHERE URL LIKE &#39;%google%&#39; ORDER BY EventTime LIMIT 10);</code><ul>
+<li>查询耗时从 5.07s 变成 1.28s</li>
+<li>性能提升 <strong>296.09%</strong></li>
+</ul>
+</li>
+</ul>
+<h5 id="JIT"><a href="#JIT" class="headerlink" title="JIT"></a>JIT</h5><ul>
+<li>主要面向各类 AGG、JOIN 等计算任务</li>
+</ul>
+<h3 id="Ossinsight（PingCAP-内部测试）"><a href="#Ossinsight（PingCAP-内部测试）" class="headerlink" title="Ossinsight（PingCAP 内部测试）"></a>Ossinsight（PingCAP 内部测试）</h3><ul>
+<li>模拟类似 Ossinsight 用到的 SQL，使用 TPCH-100 环境</li>
+<li>本轮优化不包含 CI COLLATION，对于 Ossinsight TiFlash 中使用 UNICODE CI COLLATION 的场景收效有限<ul>
+<li>事实情况是 Ossinsight 误用了 UNICODE COLLATION，本应该使用 UTF8 BIN 相关 COLLATION</li>
+</ul>
+</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original: Original: rollback all PR in <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/issues/5294">pingcap&#x2F;tiflash#5294</a> from commit <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/commit/a0f986561a9a9442cc47e75cc9bb5437c614a4d4">a0f9865</a></th>
+<th>Optimized</th>
+<th></th>
+<th>Improvement: (Original) &#x2F; (Optimized) - 1.0</th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Ossinsight 类似场景：字符串比较过滤（tpch-100 数据集模拟）</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>select count(1) from lineitem where L_SHIPMODE &#x3D; ‘zzzz’;</td>
+<td>1.07</td>
+<td>0.73</td>
+<td></td>
+<td><strong>46.58%</strong></td>
+<td>优化短字符串比较过滤 varchar(utf8mb4_bin): const-char(utf8mb4_bin)</td>
+<td></td>
+</tr>
+<tr>
+<td>select count(1) from lineitem where L_RETURNFLAG &#x3D; ‘R’;</td>
+<td>1.16</td>
+<td>0.66</td>
+<td></td>
+<td><strong>75.76%</strong></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>字符串排序</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>select min(L_SHIPMODE) from lineitem;</td>
+<td>0.93</td>
+<td>0.76</td>
+<td></td>
+<td><strong>22.37%</strong></td>
+<td>avx2 指令优化基础函数 memcmp</td>
+<td></td>
+</tr>
+<tr>
+<td>select max(L_SHIPMODE) from lineitem;</td>
+<td>1.11</td>
+<td>0.84</td>
+<td></td>
+<td><strong>32.14%</strong></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<h2 id="优化过程"><a href="#优化过程" class="headerlink" title="优化过程"></a>优化过程</h2><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/issues/5294">Improve The Performance Of New Collation Releated Function And Executor</a></p>
+<h3 id="优化-Multi-Key-Sort"><a href="#优化-Multi-Key-Sort" class="headerlink" title="优化 Multi Key Sort"></a>优化 Multi Key Sort</h3><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/pull/5908">tiflash#5908</a></p>
+<ul>
+<li>关键点在于去虚拟化。单 Key 处理比较容易，多 Key 场景则要么 JIT，要么手动展开。此处用模板，当 Key 数量为 2 时，对常见的几个类型进行展开处理。<ul>
+<li>UInt64</li>
+<li>Int64</li>
+<li>StringBin</li>
+<li>StringBinPadding</li>
+<li>StringWithCollatorGeneric</li>
+</ul>
+</li>
+<li>TODO：对于 Key 数量大于等于 3 的场景，这种方法模板膨胀较严重，可能需要按需求设置快速路径。</li>
+</ul>
+<p>Benchmark</p>
+<ul>
+<li>tpch-10&#x2F;tpch-100&#x2F;clickbench</li>
+<li>tiflash x 1</li>
+<li>original: 6d0cbc8</li>
+<li>data: clickbench</li>
+<li>limit cpu up to 200%</li>
+</ul>
+<hr>
+<ul>
+<li>SQL<ul>
+<li><code>SELECT SearchPhrase FROM hits WHERE SearchPhrase &lt;&gt; &#39;&#39; ORDER BY EventTime, SearchPhrase LIMIT 10;</code></li>
+</ul>
+</li>
+<li>sort key 为 UINT64,STR(utf8 collator)</li>
+<li>sort 开销占比较小</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th></th>
+<th></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>4.56</td>
+<td>4.42</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>4.54</td>
+<td>4.53</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>4.49</td>
+<td>4.34</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>4.56</td>
+<td>4.48</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>4.56</td>
+<td>4.42</td>
+<td></td>
+<td></td>
+<td>AVG(Original) &#x2F; AVG(Optimized) - 1.0</td>
+</tr>
+<tr>
+<td>AVG</td>
+<td>4.542</td>
+<td>4.438</td>
+<td></td>
+<td>Optimized : Original</td>
+<td>2.34%</td>
+</tr>
+</tbody></table>
+<hr>
+<ul>
+<li>limit cpu up to 2000%</li>
+<li>SQL<ul>
+<li><code>SELECT ROW_NUMBER() OVER w1 FROM PART window w1 AS (PARTITION BY P_MFGR order by P_SIZE);</code></li>
+</ul>
+</li>
+<li>sort key 为 STR(utf8 collator),UINT64</li>
+<li>sort 开销占比较大</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th></th>
+<th></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>8.16</td>
+<td>7.18</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>8.22</td>
+<td>6.94</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>8.29</td>
+<td>7.35</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>8.34</td>
+<td>7.04</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>8.24</td>
+<td>7.37</td>
+<td></td>
+<td></td>
+<td>AVG(Original) &#x2F; AVG(Optimized) - 1.0</td>
+</tr>
+<tr>
+<td>AVG</td>
+<td>8.25</td>
+<td>7.176</td>
+<td></td>
+<td>Optimized : Original</td>
+<td>14.97%</td>
+</tr>
+</tbody></table>
+<hr>
+<ul>
+<li>limit cpu up to 2000%</li>
+<li>SQL<ul>
+<li><code>EXPLAIN analyze SELECT ROW_NUMBER() OVER w1 FROM PART window w1 AS (PARTITION BY p_name ORDER BY p_partkey);</code></li>
+</ul>
+</li>
+<li>sort key 为 INT64,STR(utf8 collator)</li>
+<li>sort 开销占比约 30%</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th></th>
+<th></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>9.71</td>
+<td>9.28</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>9.62</td>
+<td>9.41</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>9.76</td>
+<td>9.25</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>9.73</td>
+<td>9.26</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>9.67</td>
+<td>9.28</td>
+<td></td>
+<td></td>
+<td>AVG(Original) &#x2F; AVG(Optimized) - 1.0</td>
+</tr>
+<tr>
+<td>AVG</td>
+<td>9.698</td>
+<td>9.296</td>
+<td></td>
+<td>Optimized : Original</td>
+<td>4.32%</td>
+</tr>
+</tbody></table>
+<hr>
+<ul>
+<li>limit cpu up to 2000%</li>
+<li>SQL</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">EXPLAIN analyze <span class="keyword">SELECT</span> <span class="built_in">ROW_NUMBER</span>() <span class="keyword">OVER</span> w1 <span class="keyword">FROM</span> PART <span class="keyword">window</span> w1 <span class="keyword">AS</span> (<span class="keyword">PARTITION</span> <span class="keyword">BY</span> P_MFGR <span class="keyword">ORDER</span> <span class="keyword">BY</span> p_name);</span><br><span class="line"><span class="operator">|</span>       └─Sort_13                    <span class="operator">|</span> <span class="number">20000000.00</span> <span class="operator">|</span> <span class="number">20000000</span> <span class="operator">|</span> mpp[tiflash] <span class="operator">|</span>               <span class="operator">|</span> tiflash_task:&#123;<span class="type">time</span>:<span class="number">17.6</span>s, loops:<span class="number">309</span>, threads:<span class="number">8</span>&#125;                                                               <span class="operator">|</span> tpch100_new.part.p_mfgr, tpch100_new.part.p_name, stream_count: <span class="number">8</span>                                                                                             <span class="operator">|</span> N<span class="operator">/</span>A      <span class="operator">|</span> N<span class="operator">/</span>A  <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span>         └─ExchangeReceiver_12      <span class="operator">|</span> <span class="number">20000000.00</span> <span class="operator">|</span> <span class="number">20000000</span> <span class="operator">|</span> mpp[tiflash] <span class="operator">|</span>               <span class="operator">|</span> tiflash_task:&#123;<span class="type">time</span>:<span class="number">7.18</span>s, loops:<span class="number">1254</span>, threads:<span class="number">8</span>&#125;                                                              <span class="operator">|</span> stream_count: <span class="number">8</span>                                                                                                                                               <span class="operator">|</span> N<span class="operator">/</span>A      <span class="operator">|</span> N<span class="operator">/</span>A  <span class="operator">|</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>sort key 为 STR(utf8 collator),STR(utf8 collator)</li>
+<li>sort 开销占比较大</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Sort end</th>
+<th>Sort start</th>
+<th>Original: sort_end - sort_start</th>
+<th>Sort end</th>
+<th>Sort start</th>
+<th>Optimized: sort_end - sort_start</th>
+<th></th>
+<th></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>17.6</td>
+<td>7.18</td>
+<td>10.42</td>
+<td>15.6</td>
+<td>6.15</td>
+<td>9.45</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>16.9</td>
+<td>6.58</td>
+<td>10.32</td>
+<td>15.2</td>
+<td>5.82</td>
+<td>9.38</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>17.8</td>
+<td>7.07</td>
+<td>10.73</td>
+<td>15.7</td>
+<td>5.95</td>
+<td>9.75</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>17.1</td>
+<td>6.88</td>
+<td>10.22</td>
+<td>15.9</td>
+<td>5.87</td>
+<td>10.03</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>18.8</td>
+<td>8.04</td>
+<td>10.76</td>
+<td>16</td>
+<td>6.07</td>
+<td>9.93</td>
+<td></td>
+<td></td>
+<td>AVG(Original) &#x2F; AVG(Optimized) - 1.0</td>
+</tr>
+<tr>
+<td>AVG</td>
+<td></td>
+<td></td>
+<td>10.49</td>
+<td></td>
+<td></td>
+<td>9.708</td>
+<td></td>
+<td>Optimized : Original</td>
+<td>8.06%</td>
+</tr>
+</tbody></table>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th></th>
+<th></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>18.3</td>
+<td>16.34</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>18.27</td>
+<td>16.62</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>18.7</td>
+<td>16.57</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>18.57</td>
+<td>16.52</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>18.55</td>
+<td>16.63</td>
+<td></td>
+<td></td>
+<td>AVG(Original) &#x2F; AVG(Optimized) - 1.0</td>
+</tr>
+<tr>
+<td>AVG</td>
+<td>18.478</td>
+<td>16.536</td>
+<td></td>
+<td>Optimized : Original</td>
+<td>11.74%</td>
+</tr>
+</tbody></table>
+<h3 id="优化-Aggregation-And-Join"><a href="#优化-Aggregation-And-Join" class="headerlink" title="优化 Aggregation And Join"></a>优化 Aggregation And Join</h3><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/pull/6135">tiflash#6135</a></p>
+<p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/pull/5834">tiflash#5834</a></p>
+<ul>
+<li>关键点在于去虚拟化。TiFlash 和 Clickhouse 代码中已针对多种场景手动展开：<ul>
+<li>常见类型的单 Agg&#x2F;Join Key，多整型数 Key，部分 Nullable Key，等。</li>
+</ul>
+</li>
+<li>复杂多 Key 场景则要么 JIT，要么手动展开。Clickhouse 代码中针对 Agg 场景已有 JIT 支持，默认不开启。</li>
+<li>此处用模板，当 Key 数量小于等于 2 时，对常见的几个类型进行展开处理<ul>
+<li>one string key<ul>
+<li>type: str-bin, str-bin-padding</li>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/1a50e00431e78b03d7d6ff3341ece621e741843a/dbms/src/Interpreters/Aggregator.h#L207-L236">struct AggregationMethodOneKeyStringNoCache</a></li>
+</ul>
+</li>
+<li>two keys<ul>
+<li>type: number-64-bytes, str-bin, str-bin-padding</li>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/1a50e00431e78b03d7d6ff3341ece621e741843a/dbms/src/Interpreters/Aggregator.h#L269-L350">struct AggregationMethodFastPathTwoKeysNoCache</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>TODO：对于 Key 数量大于等于 3 的场景，这种方法模板膨胀较严重，可能需要按需求设置快速路径。</li>
+</ul>
+<p>Benchmark</p>
+<ul>
+<li>limit cpu up to 2000%</li>
+<li>TiFlash x 1</li>
+<li>TIFLASH REPLICA x 1</li>
+<li>original commit: 49ca973</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th>Improvement: (Original) &#x2F; (Optimized) - 1.0</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><a target="_blank" rel="noopener" href="https://github.com/ClickHouse/ClickBench/tree/d661b49dffda015415366f0e12aa1ebe3424c311/mysql">ClickBench</a></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q14</td>
+<td>2.075</td>
+<td>1.835</td>
+<td>13.08%</td>
+</tr>
+<tr>
+<td>Q15</td>
+<td>1.21</td>
+<td>1.155</td>
+<td>4.76%</td>
+</tr>
+<tr>
+<td>Q17</td>
+<td>3.695</td>
+<td>3.365</td>
+<td>9.81%</td>
+</tr>
+<tr>
+<td>Q18</td>
+<td>2.925</td>
+<td>2.805</td>
+<td>4.28%</td>
+</tr>
+<tr>
+<td>Q34</td>
+<td>6.4</td>
+<td>6.085</td>
+<td>5.18%</td>
+</tr>
+<tr>
+<td>Q35</td>
+<td>6.575</td>
+<td>6.28</td>
+<td>4.70%</td>
+</tr>
+<tr>
+<td>TPCH-100</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Q1</td>
+<td>7.28</td>
+<td>7.08</td>
+<td>2.82%</td>
+</tr>
+</tbody></table>
+<hr>
+<ul>
+<li>TiFlash x 1</li>
+<li>Data: tpch-10</li>
+<li>original a8c8cb1</li>
+<li>limit cpu up to 500%</li>
+<li>SQL <code>select max(l_comment) from lineitem;</code></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th></th>
+<th></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>7.71</td>
+<td>7.05</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>7.75</td>
+<td>6.96</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>7.95</td>
+<td>7.07</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>7.61</td>
+<td>7.23</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>7.83</td>
+<td>7.07</td>
+<td></td>
+<td></td>
+<td>AVG(Original) &#x2F; AVG(Optimized) - 1.0</td>
+</tr>
+<tr>
+<td>AVG</td>
+<td>7.77</td>
+<td>7.076</td>
+<td></td>
+<td>Optimized : Original</td>
+<td>9.81%</td>
+</tr>
+</tbody></table>
+<hr>
+<ul>
+<li>Data: tpch-100</li>
+<li>limit cpu up to 2000%</li>
+<li>SQL: tpch Q1</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th></th>
+<th></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>11.48</td>
+<td>10.68</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>10.96</td>
+<td>10.5</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>11.18</td>
+<td>10.66</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>11.16</td>
+<td>10.67</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>11.18</td>
+<td>10.51</td>
+<td></td>
+<td></td>
+<td>AVG(Original) &#x2F; AVG(Optimized) - 1.0</td>
+</tr>
+<tr>
+<td>AVG</td>
+<td>11.192</td>
+<td>10.604</td>
+<td></td>
+<td>Optimized : Original</td>
+<td>5.55%</td>
+</tr>
+</tbody></table>
+<h3 id="CPU-Cache-踩坑"><a href="#CPU-Cache-踩坑" class="headerlink" title="CPU Cache 踩坑"></a>CPU Cache 踩坑</h3><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/pull/5996">tiflash#5996</a></p>
+<p>内部测试中存储模块出现性能下降 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/issues/5949">tiflash#5949</a>，其根因在于 commit <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/commit/dfac6a50b09711d12a3b6909126782d1b8ed363d">dfac6a5</a> 将默认 <code>memcpy</code> 函数替换为 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/bd1625562fb782d3052b0288f7b905521646c39a/libs/libmemcpy/folly/memcpy.S">__folly_memcpy</a>。在 commit 的 benchmark 中，可知 <code>__folly_memcpy</code> 在小数据下（size &lt; 80 B）性能不如之前的实现，但对于存储而言，这类小数据拷贝在全局所占比例不高，理论上不应该产生如此巨大的负面影响。</p>
+<h4 id="Non-temporal-Memory-Copy"><a href="#Non-temporal-Memory-Copy" class="headerlink" title="Non-temporal Memory Copy"></a>Non-temporal Memory Copy</h4><p>分析代码可知，<code>__folly_memcpy</code> 定义了一个阈值 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/bd1625562fb782d3052b0288f7b905521646c39a/libs/libmemcpy/folly/memcpy.S#L98-L101">NON_TEMPORAL_STORE_THRESHOLD</a>（32768 即 32K），其作用在于如果需要拷贝的内存大于阈值且双方地址均已对齐，就利用 <code>NON-TEMPORAL</code> 的方式来减少对 CPU Cache 的污染。</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/bd1625562fb782d3052b0288f7b905521646c39a/libs/libmemcpy/folly/memcpy.S#L329-L353">folly&#x2F;memcpy.S#L329-L353</a></li>
+</ul>
+<p>现代 CPU 普遍采用多级缓存，以 <code>AMD Ryzen 9 5900X</code> 为例，其在 <code>WSL2</code> 中参数信息如下（实际物理环境是 L1 768KB, L2 6.0MB, L3 64.0MB）。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">getconf -a | grep CACHE</span><br><span class="line">LEVEL1_ICACHE_SIZE                 32768</span><br><span class="line">LEVEL1_ICACHE_ASSOC                8</span><br><span class="line">LEVEL1_ICACHE_LINESIZE             64</span><br><span class="line">LEVEL1_DCACHE_SIZE                 32768</span><br><span class="line">LEVEL1_DCACHE_ASSOC                8</span><br><span class="line">LEVEL1_DCACHE_LINESIZE             64</span><br><span class="line">LEVEL2_CACHE_SIZE                  524288</span><br><span class="line">LEVEL2_CACHE_ASSOC                 8</span><br><span class="line">LEVEL2_CACHE_LINESIZE              64</span><br><span class="line">LEVEL3_CACHE_SIZE                  67108864</span><br><span class="line">LEVEL3_CACHE_ASSOC                 0</span><br><span class="line">LEVEL3_CACHE_LINESIZE              64</span><br><span class="line">LEVEL4_CACHE_SIZE                  0</span><br><span class="line">LEVEL4_CACHE_ASSOC                 0</span><br><span class="line">LEVEL4_CACHE_LINESIZE              0</span><br></pre></td></tr></table></figure>
+
+<p>通常每个 CPU 含有独立的 L1 和 L2 缓存，L3 缓存为所有核共享。L1 缓存分为 L1i（存储指令） 和 L1d（存储数据），L2 和 L3 缓存不区分指令和数据。参考 <a target="_blank" rel="noopener" href="https://www.7-cpu.com/cpu/Zen2.html">7-cpu.com&#x2F;cpu&#x2F;Zen2</a> 和 <a target="_blank" rel="noopener" href="https://en.wikichip.org/wiki/amd/microarchitectures/zen_3">amd&#x2F;microarchitectures&#x2F;zen_3</a>，缓存数据延迟约为：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">L1 Data Cache Latency:</span><br><span class="line">4 cycles for simple access via pointer</span><br><span class="line">5 cycles for access with complex address calculation (size_t n, *p; n = p[n]).</span><br><span class="line"></span><br><span class="line">AMD DOC: 7- or 8-cycle FPU load-to-use latency.</span><br><span class="line"></span><br><span class="line">L2 Cache Latency = 12 cycles</span><br><span class="line"></span><br><span class="line">L3 Cache Latency = 38 cycles</span><br><span class="line"></span><br><span class="line">RAM Latency = 38 cycles + 66 ns</span><br></pre></td></tr></table></figure>
+
+<p>绝大多数情况下，多级缓存机制可以显著增强读写内存数据的性能。但对于已知的 2 种场景而言，刷新 CPU 缓存的意义不大：</p>
+<ul>
+<li>临时内存拷贝，即内存数据短期不再被用到</li>
+<li>大块内存拷贝，需要拷贝的内存大小超过 CPU 缓存，容易导致其他模块的有效缓存被刷掉，造成缓存污染</li>
+</ul>
+<p>glibc 的实现也考虑到了这一点，例如在 <code>Debian GLIBC 2.28-10</code> 中，memcpy 函数的一处逻辑会判断需拷贝的内存大小，超过 <code>60MB</code>(<code>mallwatch@@GLIBC_2.2.5+0x8</code>) 则用 <a target="_blank" rel="noopener" href="https://www.felixcloutier.com/x86/movntdq">movntdq</a> 指令将数据从寄存器写到内存。该类指令采用 <code>Non-temporal Hint</code> 来避免 CPU 缓存数据。与之对应的 <a target="_blank" rel="noopener" href="https://www.felixcloutier.com/x86/movntdqa">movntdqa</a> 指令则是将数据从内存读取到寄存器。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">/lib/x86_64-linux-gnu/libc.so.6</span><br><span class="line"></span><br><span class="line">GNU C Library (Debian GLIBC 2.28-10) stable release version 2.28.</span><br><span class="line">Copyright (C) 2018 Free Software Foundation, Inc.</span><br><span class="line">This is free software; see the <span class="built_in">source</span> <span class="keyword">for</span> copying conditions.</span><br><span class="line">There is NO warranty; not even <span class="keyword">for</span> MERCHANTABILITY or FITNESS FOR A</span><br><span class="line">PARTICULAR PURPOSE.</span><br><span class="line">Compiled by GNU CC version 8.3.0.</span><br><span class="line">libc ABIs: UNIQUE IFUNC ABSOLUTE</span><br><span class="line">For bug reporting instructions, please see:</span><br><span class="line">&lt;http://www.debian.org/Bugs/&gt;.</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Debian GNU/Linux 10.9</span></span><br><span class="line">objdump -r -C -D /lib/x86_64-linux-gnu/libc.so.6</span><br><span class="line"></span><br><span class="line">   a2232:       48 3b 15 3f e2 11 00    cmp    0x11e23f(%rip),%rdx        <span class="comment"># 1c0478 &lt;mallwatch@@GLIBC_2.2.5+0x8&gt;</span></span><br><span class="line">   a2239:       0f 87 cc 00 00 00       ja     a230b &lt;memcpy@GLIBC_2.2.5+0x2eb&gt;</span><br><span class="line">   ...</span><br><span class="line">   a230b:       4c 8d 14 17             lea    (%rdi,%rdx,1),%r10</span><br><span class="line">   a230f:       4c 39 d6                cmp    %r10,%rsi</span><br><span class="line">   a2312:       0f 82 27 ff ff ff       jb     a223f &lt;memcpy@GLIBC_2.2.5+0x21f&gt;</span><br><span class="line">   a2318:       0f 18 8e 80 00 00 00    prefetcht0 0x80(%rsi)</span><br><span class="line">   a231f:       0f 18 8e c0 00 00 00    prefetcht0 0xc0(%rsi)</span><br><span class="line">   a2326:       0f 10 06                movups (%rsi),%xmm0</span><br><span class="line">   a2329:       0f 10 4e 10             movups 0x10(%rsi),%xmm1</span><br><span class="line">   a232d:       0f 10 56 20             movups 0x20(%rsi),%xmm2</span><br><span class="line">   a2331:       0f 10 5e 30             movups 0x30(%rsi),%xmm3</span><br><span class="line">   a2335:       48 83 c6 40             add    <span class="variable">$0x40</span>,%rsi</span><br><span class="line">   a2339:       48 83 ea 40             sub    <span class="variable">$0x40</span>,%rdx</span><br><span class="line">   a233d:       66 0f e7 07             movntdq %xmm0,(%rdi)</span><br><span class="line">   a2341:       66 0f e7 4f 10          movntdq %xmm1,0x10(%rdi)</span><br><span class="line">   a2346:       66 0f e7 57 20          movntdq %xmm2,0x20(%rdi)</span><br><span class="line">   a234b:       66 0f e7 5f 30          movntdq %xmm3,0x30(%rdi)</span><br><span class="line">   a2350:       48 83 c7 40             add    <span class="variable">$0x40</span>,%rdi</span><br><span class="line">   a2354:       48 83 fa 40             cmp    <span class="variable">$0x40</span>,%rdx</span><br><span class="line">   a2358:       77 be                   ja     a2318 &lt;memcpy@GLIBC_2.2.5+0x2f8&gt;</span><br><span class="line">   a235a:       0f ae f8                sfence </span><br><span class="line">   a235d:       0f 11 29                movups %xmm5,(%rcx)</span><br><span class="line">   a2360:       0f 11 71 f0             movups %xmm6,-0x10(%rcx)</span><br><span class="line">   a2364:       0f 11 79 e0             movups %xmm7,-0x20(%rcx)</span><br><span class="line">   a2368:       44 0f 11 41 d0          movups %xmm8,-0x30(%rcx)</span><br><span class="line">   a236d:       41 0f 11 23             movups %xmm4,(%r11)</span><br><span class="line">   a2371:       c3                      retq         </span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// test.1.cpp</span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;cstdint&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;cstdio&gt;</span></span></span><br><span class="line"><span class="keyword">extern</span> <span class="type">uint64_t</span> mallwatch;</span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">  <span class="comment">// mallwatch@@GLIBC_2.2.5+0x8</span></span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;%.2f MB\n&quot;</span>, (&amp;mallwatch)[<span class="number">1</span>] / <span class="number">1024.0</span> / <span class="number">1024.0</span>);</span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">filename=`<span class="built_in">mktemp</span>` &amp;&amp; clang++ -fPIC test.1.cpp -o <span class="variable">$&#123;filename&#125;</span> &amp;&amp; <span class="variable">$&#123;filename&#125;</span> &amp;&amp; <span class="built_in">rm</span> <span class="variable">$&#123;filename&#125;</span></span><br><span class="line">60.00 MB</span><br></pre></td></tr></table></figure>
+
+<p>由于内存相对 CPU 缓存的数据延迟存在数量级差距，对于马上会被复用的内存数据，使用 <code>NON-TEMPORAL</code> 的方式进行拷贝无疑会严重拖慢性能。尤其是对于 OLAP 类的引擎而言，大块内存的使用较为频繁，那么该如何选择启用 <code>NON-TEMPORAL</code> 的时机？</p>
+<ul>
+<li>服务器端虚拟化 CPU 常见缓存大小为 L1 32KB，L2 256KB，L3 25MB～64MB</li>
+<li>folly 设置了固定的阈值 32KB</li>
+<li><code>Debian GLIBC 2.28-10</code> 用全局变量作为阈值，进程初始化时设置，大约是 L3 缓存<ul>
+<li>其他版本也有采用 L1 缓存相关大小作为阈值，不同环境具体实现差异较大</li>
+</ul>
+</li>
+<li>TiFlash 默认不用这种方式<ul>
+<li>对于大部分存储|计算场景，最小数据单元为 Block（通常包含 8192 行数据）。即便是单 int64 类型列，大小也至少有 <code>8192 * 8 = 64KB</code>。如果是 str 类型列，每行至少还有 2 个 uint64 字段表示 offset 和 size，则总量大于 <code>8192 * (8 + 8 + 1) = 136KB</code>。</li>
+<li>在 memcpy 函数中启用 <code>NON-TEMPORAL</code> 的合理阈值至少是大于 L2 缓存，具体得根据业务形态调整</li>
+<li>实际场景中，如果需要进行大块临时内存拷贝，最好在逻辑实现上直接选择 <code>NON-TEMPORAL</code> 的实现而非调用 memcpy</li>
+</ul>
+</li>
+</ul>
+<h3 id="优化-memcpy"><a href="#优化-memcpy" class="headerlink" title="优化 memcpy"></a>优化 memcpy</h3><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/pull/6281">tiflash#6281</a></p>
+<ul>
+<li>folly 纯汇编实现的 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/bd1625562fb782d3052b0288f7b905521646c39a/libs/libmemcpy/folly/memcpy.S">__folly_memcpy</a> 主要使用 avx2 指令优化，然而当拷贝数据量大于 <code>32K(L1 cache size)</code> 时表现较差，具体原因见上文 <a href="#CPU-Cache-%E8%B8%A9%E5%9D%91">CPU Cache 踩坑
+</a>。旧版实现 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/77108d5efc869867c706c4f0b88ee7a50f07ce93/libs/libcommon/include/common/sse2_memcpy.h#L28">sse2_inline_memcpy</a> 则主要基于 sse2。</li>
+<li>该 PR 旨在提供一种更高效的 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/77108d5efc869867c706c4f0b88ee7a50f07ce93/libs/libcommon/include/common/memcpy.h#L28">inline_memcpy</a> 实现。</li>
+</ul>
+<p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/77108d5efc869867c706c4f0b88ee7a50f07ce93/libs/libcommon/include/common/avx2_memcpy.h">avx2_inline_memcpy</a></p>
+<ul>
+<li>inline 实现需保证代码不过于复杂，尽可能紧凑，可牺牲些许性能（这类特定场景编译器生成的汇编码一般不如人工手写），否则不如用非 inline 的汇编实现。</li>
+<li>为 size 不大于 32 字节的场景设置优先路径<ul>
+<li>size 以 16，8，4，2 进行划分，对应寄存器的大小</li>
+<li>为了 benchmark 结果好看，分支排列顺序可以优先大 size。本文的实现则是判断 8～16 优先于 16～32。</li>
+<li>真实场景中，这部分排列所能影响的分支预测｜跳转开销占比相对较小</li>
+</ul>
+</li>
+<li>由于 memcpy 要求 src 和 dst 数据范围不可重叠，前后各按可用的寄存器大小进行拷贝</li>
+<li>对于 size 大于 256 的场景，先将 dst 地址按照 32（ymm 寄存器大小）对齐</li>
+<li>Software Prefetch（使用内存预取指令）对于已经在 CPU 缓存内的数据收益不大，读写连续的数据，现代 CPU 大多已有 Hardware Prefetch 来优化<ul>
+<li>参考 <a target="_blank" rel="noopener" href="https://en.algorithmica.org/hpc/cpu-cache/prefetching/">algorithmica&#x2F;hpc</a>：Software Prefetch 配合 <a href="#Non-temporal-Memory-Copy">non-temporal</a> 读写的场景较为有用</li>
+</ul>
+</li>
+</ul>
+<h4 id="Benchmark-of-avx2-inline-memcpy"><a href="#Benchmark-of-avx2-inline-memcpy" class="headerlink" title="Benchmark of avx2_inline_memcpy"></a>Benchmark of <code>avx2_inline_memcpy</code></h4><figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">Run on (40 X 2386.24 MHz CPU s)</span><br><span class="line">CPU Caches:</span><br><span class="line">  L1 Data 32 KiB (x20)</span><br><span class="line">  L1 Instruction 32 KiB (x20)</span><br><span class="line">  L2 Unified 256 KiB (x20)</span><br><span class="line">  L3 Unified 25600 KiB (x2)</span><br><span class="line">Load Average: 6.72, 6.65, 6.07</span><br><span class="line">-------------------------------------------------------------------------------------------------------------------</span><br><span class="line">Benchmark                                                                         Time             CPU   Iterations</span><br><span class="line">-------------------------------------------------------------------------------------------------------------------</span><br><span class="line">MemUtilsCopy_1_20_3_true_20000/stl_mempy/iterations:500                      446194 ns       446197 ns          500</span><br><span class="line">MemUtilsCopy_1_20_3_true_20000/inline_clickhouse_memcpy/iterations:500       140571 ns       140528 ns          500</span><br><span class="line">MemUtilsCopy_1_20_3_true_20000/sse2_memcpy/iterations:500                    150496 ns       150321 ns          500</span><br><span class="line">MemUtilsCopy_1_20_3_true_20000/avx2_memcpy/iterations:500                    137616 ns       137586 ns          500</span><br><span class="line">MemUtilsCopy_1_20_3_true_20000/folly_memcpy/iterations:500                   181997 ns       182004 ns          500</span><br><span class="line">MemUtilsCopy_1_40_3_true_20000/stl_mempy/iterations:500                      456534 ns       456549 ns          500</span><br><span class="line">MemUtilsCopy_1_40_3_true_20000/inline_clickhouse_memcpy/iterations:500       176257 ns       176264 ns          500</span><br><span class="line">MemUtilsCopy_1_40_3_true_20000/sse2_memcpy/iterations:500                    178094 ns       178086 ns          500</span><br><span class="line">MemUtilsCopy_1_40_3_true_20000/avx2_memcpy/iterations:500                    165250 ns       165256 ns          500</span><br><span class="line">MemUtilsCopy_1_40_3_true_20000/folly_memcpy/iterations:500                   186537 ns       186544 ns          500</span><br><span class="line">MemUtilsCopy_1_80_3_true_20000/stl_mempy/iterations:500                      476534 ns       476510 ns          500</span><br><span class="line">MemUtilsCopy_1_80_3_true_20000/inline_clickhouse_memcpy/iterations:500       238987 ns       238996 ns          500</span><br><span class="line">MemUtilsCopy_1_80_3_true_20000/sse2_memcpy/iterations:500                    302893 ns       302887 ns          500</span><br><span class="line">MemUtilsCopy_1_80_3_true_20000/avx2_memcpy/iterations:500                    231339 ns       231348 ns          500</span><br><span class="line">MemUtilsCopy_1_80_3_true_20000/folly_memcpy/iterations:500                   200658 ns       200665 ns          500</span><br><span class="line">MemUtilsCopy_1_200_3_true_20000/stl_mempy/iterations:500                     660466 ns       660356 ns          500</span><br><span class="line">MemUtilsCopy_1_200_3_true_20000/inline_clickhouse_memcpy/iterations:500      440048 ns       439948 ns          500</span><br><span class="line">MemUtilsCopy_1_200_3_true_20000/sse2_memcpy/iterations:500                   427743 ns       427739 ns          500</span><br><span class="line">MemUtilsCopy_1_200_3_true_20000/avx2_memcpy/iterations:500                   198850 ns       198876 ns          500</span><br><span class="line">MemUtilsCopy_1_200_3_true_20000/folly_memcpy/iterations:500                  243985 ns       243973 ns          500</span><br><span class="line">MemUtilsCopy_1_2000_3_true_20000/stl_mempy/iterations:500                   1535333 ns      1535242 ns          500</span><br><span class="line">MemUtilsCopy_1_2000_3_true_20000/inline_clickhouse_memcpy/iterations:500     847673 ns       847547 ns          500</span><br><span class="line">MemUtilsCopy_1_2000_3_true_20000/sse2_memcpy/iterations:500                  793617 ns       793608 ns          500</span><br><span class="line">MemUtilsCopy_1_2000_3_true_20000/avx2_memcpy/iterations:500                  682924 ns       682915 ns          500</span><br><span class="line">MemUtilsCopy_1_2000_3_true_20000/folly_memcpy/iterations:500                 662669 ns       662652 ns          500</span><br></pre></td></tr></table></figure>
+
+<p><strong>当内存拷贝的数据量较大（例如大于 <code>L3 Cache Size x 2</code>），则内存 I&#x2F;O 成为瓶颈，此时各类实现性能差异不大</strong></p>
+<h3 id="优化-memcmp-memequal-memchr-strstr"><a href="#优化-memcmp-memequal-memchr-strstr" class="headerlink" title="优化 memcmp memequal memchr strstr"></a>优化 memcmp memequal memchr strstr</h3><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/pull/5658">tiflash#5658</a></p>
+<ul>
+<li>基于 avx2 实现 <code>avx2_mem_cmp</code> 和 <code>avx2_mem_equal</code><ul>
+<li>原本基于 avx512 的 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/eaf1a4cf886d1d5a86d04ef14eff956778ab4911/libs/libcommon/include/common/mem_utils.h#L134-L183">mem_utils::memoryEqual</a> 面向小字符串比较性能比 <code>std::memcmp</code> 更慢，重新基于 avx2 实现</li>
+</ul>
+</li>
+<li>基于 avx2 实现字符串搜索相关基础函数 <code>avx2_memchr</code> 和 <code>avx2_strstr</code></li>
+</ul>
+<h4 id="Implementation-Of-Mem-Utils"><a href="#Implementation-Of-Mem-Utils" class="headerlink" title="Implementation Of Mem Utils"></a>Implementation Of Mem Utils</h4><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/77108d5efc869867c706c4f0b88ee7a50f07ce93/libs/libcommon/include/common/avx2_mem_utils.h#L191-L365">avx2_mem_cmp</a><br><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/77108d5efc869867c706c4f0b88ee7a50f07ce93/libs/libcommon/include/common/avx2_mem_utils.h#L367-L527">avx2_mem_equal</a></p>
+<ul>
+<li>为 size 不大于 32 的场景设置优先路径<ul>
+<li>本文的实现采用了较为简单的 switch case 方式，也可以划分 size 并按需调整分支排列顺序</li>
+</ul>
+</li>
+<li>对于 size 大于 256 的场景，先将地址按照 32（ymm 寄存器大小）对齐</li>
+<li>mem cmp 相较于 mem equal 稍微复杂，本质上都是利用 SIMD 指令按批判断数据是否相等，对于不等的情况，mem cmp 还需找到不等的字节并读取到 32 位寄存器中进行相减</li>
+<li>处理连续内存，暂无需考虑预取</li>
+</ul>
+<p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/77108d5efc869867c706c4f0b88ee7a50f07ce93/libs/libcommon/include/common/avx2_strstr.h#L264-L282">avx2_memchr</a><br><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/77108d5efc869867c706c4f0b88ee7a50f07ce93/libs/libcommon/include/common/avx2_strstr.h#L260-L263">avx2_strstr</a></p>
+<ul>
+<li>字符串直接匹配搜索的算法有很多，典型的类似 KMP &#x2F; Aho–Corasick 之流会用到状态机。<code>std::string_view::find</code> 则是调用 <code>memchr</code> 找到目标的第一个字符，再通过 <code>bcmp</code> 判断子串是否相等并循环往复。</li>
+<li>可以假设，通常情况下用于匹配的数据是有意义的且含有一定的特征，状态机算法引入额外的空间开销以及生成构建开销反而低效。<ul>
+<li>如果考虑非朴素场景，则可以另外进行针对性优化，例如搜索引擎所用的倒排索引。</li>
+</ul>
+</li>
+<li><code>avx2_strstr</code> 实现上则是通过 <code>avx2_memchr</code> 找到第一个目标字符，再通过 <code>avx2_mem_equal</code> 判断相等，以此循环直到完全匹配</li>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/77108d5efc869867c706c4f0b88ee7a50f07ce93/libs/libcommon/include/common/avx2_strstr.h#L195-L248">avx2_strstr.h#L195-L248</a> 考虑到绝大部分场景下目标字符串都不大，所以此处实现上是用模板封装 size 不大于 16 的场景，进一步内联优化以减少分支</li>
+<li>处理内存对齐需注意的点：<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/77108d5efc869867c706c4f0b88ee7a50f07ce93/libs/libcommon/include/common/avx2_strstr.h#L126-L159">avx2_strstr.h#L126-L159</a><ul>
+<li>内存分配器以 Page 为基准单元向操作系统申请并管理内存<ul>
+<li>Page 大小通常为 4KB，至少是一个 block（512B）</li>
+<li>如果内存地址 S 是合法的，则 <code>[ALIGN_TO_PAGE_SIZE(S), ALIGN_TO_PAGE_SIZE(S) + PAGE_SIZE)</code> 范围内均是合法地址</li>
+</ul>
+</li>
+<li>为减少分支，此处直接先将地址按 32 对齐并通过 avx2 指令计算标志位。对于多算的部分，则可根据对齐时的偏移去除。<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/77108d5efc869867c706c4f0b88ee7a50f07ce93/libs/libcommon/include/common/avx2_strstr.h#L35-L58">avx2_strstr.h#L35-L58</a> 末尾处理也是同理。</li>
+</ul>
+</li>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/77108d5efc869867c706c4f0b88ee7a50f07ce93/libs/libcommon/include/common/avx2_strstr.h#L77-L116">avx2_strstr.h#L77-L116</a> 按照 128 个字节做批处理，优先乐观检测过滤</li>
+</ul>
+<h4 id="Benchmark-Of-Mem-Utils"><a href="#Benchmark-Of-Mem-Utils" class="headerlink" title="Benchmark Of Mem Utils"></a>Benchmark Of Mem Utils</h4><ul>
+<li>参考 Benchmark Collation Impact 中的测试用例</li>
+<li>original 8404e656</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(ns)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th></th>
+<th>Improvement: (Original) &#x2F; (Optimized) - 1.0</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CollationEqBench&#x2F;UTF8MB4_BIN</td>
+<td>12428711</td>
+<td>6228798</td>
+<td></td>
+<td>99.54%</td>
+</tr>
+<tr>
+<td>CollationEqBench&#x2F;UTF8_BIN</td>
+<td>12956705</td>
+<td>6141843</td>
+<td></td>
+<td>110.96%</td>
+</tr>
+<tr>
+<td>CollationEqBench&#x2F;ASCII_BIN</td>
+<td>12625723</td>
+<td>6229335</td>
+<td></td>
+<td>102.68%</td>
+</tr>
+<tr>
+<td>CollationEqBench&#x2F;BINARY</td>
+<td>11870078</td>
+<td>5837615</td>
+<td></td>
+<td>103.34%</td>
+</tr>
+<tr>
+<td>CollationEqBench&#x2F;LATIN1_BIN</td>
+<td>13768201</td>
+<td>6732640</td>
+<td></td>
+<td>104.50%</td>
+</tr>
+<tr>
+<td>CollationLikeBench&#x2F;UTF8MB4_BIN</td>
+<td>37940667</td>
+<td>20185747</td>
+<td></td>
+<td>87.96%</td>
+</tr>
+<tr>
+<td>CollationLikeBench&#x2F;UTF8_BIN</td>
+<td>37803575</td>
+<td>19914106</td>
+<td></td>
+<td>89.83%</td>
+</tr>
+<tr>
+<td>CollationLikeBench&#x2F;ASCII_BIN</td>
+<td>36860160</td>
+<td>17999743</td>
+<td></td>
+<td>104.78%</td>
+</tr>
+<tr>
+<td>CollationLikeBench&#x2F;BINARY</td>
+<td>37449881</td>
+<td>17599053</td>
+<td></td>
+<td>112.79%</td>
+</tr>
+<tr>
+<td>CollationLikeBench&#x2F;LATIN1_BIN</td>
+<td>37503432</td>
+<td>17675036</td>
+<td></td>
+<td>112.18%</td>
+</tr>
+</tbody></table>
+<ul>
+<li>测试 STL 库中的 <code>bcmp</code>，<code>mem_utils::memoryEqual</code> 以及自定义 <code>avx2_mem_equal</code> 性能对比</li>
+<li>测试 STL 库中的 <code>std::string_view::find</code> 和自定义 <code>avx2_strstr</code> 性能对比</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(ns)</th>
+<th>STL</th>
+<th>Original-avx512</th>
+<th>Optimized-avx2</th>
+<th>Improvement: (STL) &#x2F; (Optimized) - 1.0</th>
+<th>Improvement: (Original) &#x2F; (Optimized) - 1.0</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>check mem eq: MemUtilsEqual_${str-size}</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>MemUtilsEqual_13</td>
+<td>4.46</td>
+<td>10.3</td>
+<td>3.21</td>
+<td>38.94%</td>
+<td>220.87%</td>
+</tr>
+<tr>
+<td>MemUtilsEqual_65</td>
+<td>5.25</td>
+<td>9.83</td>
+<td>4.44</td>
+<td>18.24%</td>
+<td>121.40%</td>
+</tr>
+<tr>
+<td>MemUtilsEqual_100</td>
+<td>9.31</td>
+<td>11.3</td>
+<td>5.32</td>
+<td>75.00%</td>
+<td>112.41%</td>
+</tr>
+<tr>
+<td>MemUtilsEqual_10000</td>
+<td>299</td>
+<td>377</td>
+<td>213</td>
+<td>40.38%</td>
+<td>77.00%</td>
+</tr>
+<tr>
+<td>MemUtilsEqual_100000</td>
+<td>3657</td>
+<td>4009</td>
+<td>3382</td>
+<td>8.13%</td>
+<td>18.54%</td>
+</tr>
+<tr>
+<td>MemUtilsEqual_1000000</td>
+<td>62265</td>
+<td>53157</td>
+<td>52600</td>
+<td>18.37%</td>
+<td>1.06%</td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>str find: MemUtilsStrStr_${src-str-size}_${needle-str-size}</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>MemUtilsStrStr_1024_1</td>
+<td>30882</td>
+<td></td>
+<td>21275</td>
+<td>45.16%</td>
+<td></td>
+</tr>
+<tr>
+<td>MemUtilsStrStr_1024_7</td>
+<td>34927</td>
+<td></td>
+<td>21279</td>
+<td>64.14%</td>
+<td></td>
+</tr>
+<tr>
+<td>MemUtilsStrStr_1024_15</td>
+<td>39364</td>
+<td></td>
+<td>23161</td>
+<td>69.96%</td>
+<td></td>
+</tr>
+<tr>
+<td>MemUtilsStrStr_1024_31</td>
+<td>40628</td>
+<td></td>
+<td>29435</td>
+<td>38.03%</td>
+<td></td>
+</tr>
+<tr>
+<td>MemUtilsStrStr_1024_63</td>
+<td>37381</td>
+<td></td>
+<td>26141</td>
+<td>43.00%</td>
+<td></td>
+</tr>
+<tr>
+<td>MemUtilsStrStr_80_1</td>
+<td>6130</td>
+<td></td>
+<td>3977</td>
+<td>54.14%</td>
+<td></td>
+</tr>
+<tr>
+<td>MemUtilsStrStr_80_7</td>
+<td>11720</td>
+<td></td>
+<td>6278</td>
+<td>86.68%</td>
+<td></td>
+</tr>
+<tr>
+<td>MemUtilsStrStr_80_15</td>
+<td>11585</td>
+<td></td>
+<td>5423</td>
+<td>113.63%</td>
+<td></td>
+</tr>
+<tr>
+<td>MemUtilsStrStr_80_31</td>
+<td>11467</td>
+<td></td>
+<td>9530</td>
+<td>20.33%</td>
+<td></td>
+</tr>
+</tbody></table>
+<ul>
+<li>测试 STL 库中 <code>memcmp</code> 同自定义 <code>avx2_mem_cmp</code> 对比</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(ns)</th>
+<th>STL: (GNU libc) 2.17</th>
+<th>Optimized-avx2</th>
+<th>Improvement: (STL) &#x2F; (Optimized) - 1.0</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>MemUtilsCmp_$&#123;str-size&#125;_$&#123;loop_times&#125;: check mem-cmp for str for specific times</code></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>MemUtilsCmp_2_20</td>
+<td>66.5</td>
+<td>51.9</td>
+<td>28.13%</td>
+</tr>
+<tr>
+<td>MemUtilsCmp_13_20</td>
+<td>75.3</td>
+<td>66</td>
+<td>14.09%</td>
+</tr>
+<tr>
+<td>MemUtilsCmp_65_20</td>
+<td>126</td>
+<td>106</td>
+<td>18.87%</td>
+</tr>
+<tr>
+<td>MemUtilsCmp_100_20</td>
+<td>167</td>
+<td>106</td>
+<td>57.55%</td>
+</tr>
+<tr>
+<td>MemUtilsCmp_10000_20</td>
+<td>5145</td>
+<td>3740</td>
+<td>37.57%</td>
+</tr>
+<tr>
+<td>MemUtilsCmp_100000_20</td>
+<td>81996</td>
+<td>68577</td>
+<td>19.57%</td>
+</tr>
+<tr>
+<td>MemUtilsCmp_1000000_20</td>
+<td>1254279</td>
+<td>1112721</td>
+<td>12.72%</td>
+</tr>
+</tbody></table>
+<ul>
+<li>测试分别使用 <code>avx2_strstr</code> 和 <code>std::string_view::find</code> 的 <code>LIKE()</code> 表达式计算性能</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> <span class="built_in">count</span>(<span class="number">1</span>) <span class="keyword">from</span> orders <span class="keyword">where</span> o_comment <span class="keyword">like</span> <span class="string">&#x27;%pending%deposits%&#x27;</span>;</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th></th>
+<th></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>10.75</td>
+<td>8.72</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>10.92</td>
+<td>8.87</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>10.98</td>
+<td>8.35</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>10.7</td>
+<td>8.64</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>10.77</td>
+<td>8.5</td>
+<td></td>
+<td></td>
+<td>AVG(Original) &#x2F; AVG(Optimized) - 1.0</td>
+</tr>
+<tr>
+<td>AVG</td>
+<td>10.824</td>
+<td>8.616</td>
+<td></td>
+<td>Optimized : Original</td>
+<td>25.63%</td>
+</tr>
+</tbody></table>
+<h3 id="优化字符串比较"><a href="#优化字符串比较" class="headerlink" title="优化字符串比较"></a>优化字符串比较</h3><h4 id="字符串比较"><a href="#字符串比较" class="headerlink" title="字符串比较"></a>字符串比较</h4><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/pull/5299">tiflash#5299</a></p>
+<ul>
+<li>早期版本的实现为 collation 处理引入了虚函数 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/97342db2a1dd705b1bd98f3481d51f48a4f0300d/dbms/src/Storages/Transaction/Collator.h#L66-L67">compare &#x2F; sortKey</a> 用于字符串比较以及获取排序键。这种方式面向大计算量的场景比较低效。</li>
+<li>此处针对 TiDB 默认的 <code>BIN</code> 系列 collation，在处理 str 列时去虚拟化。</li>
+</ul>
+<p>Benchmark</p>
+<ul>
+<li>Data: tpch-10</li>
+<li>tiflash x 1</li>
+<li>limit cpu up to 200%</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">MySQL [tpch_10]<span class="operator">&gt;</span> <span class="keyword">select</span> <span class="built_in">count</span>(<span class="number">1</span>) <span class="keyword">from</span> lineitem <span class="keyword">where</span> l_comment <span class="operator">=</span> <span class="string">&#x27;zzle? slyly regular instruc       &#x27;</span>;</span><br><span class="line"><span class="operator">+</span><span class="comment">----------+</span></span><br><span class="line"><span class="operator">|</span> <span class="built_in">count</span>(<span class="number">1</span>) <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----------+</span></span><br><span class="line"><span class="operator">|</span>        <span class="number">1</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----------+</span></span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th>NoCollation</th>
+<th></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>2.46</td>
+<td>1.56</td>
+<td>1.48</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>2.41</td>
+<td>1.56</td>
+<td>1.38</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>2.36</td>
+<td>1.47</td>
+<td>1.43</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>2.35</td>
+<td>1.55</td>
+<td>1.4</td>
+<td>NoCollation : Original</td>
+<td>69.30%</td>
+</tr>
+<tr>
+<td></td>
+<td>2.44</td>
+<td>1.49</td>
+<td>1.41</td>
+<td>Optimized : Original</td>
+<td>57.54%</td>
+</tr>
+<tr>
+<td>AVG</td>
+<td>2.404</td>
+<td>1.526</td>
+<td>1.42</td>
+<td>NoCollation : Optimized</td>
+<td>7.46%</td>
+</tr>
+</tbody></table>
+<hr>
+<ul>
+<li>SQL <code>select count(1) from lineitem where l_comment &lt; l_comment;</code></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th>NoCollation</th>
+<th></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>2.32</td>
+<td>2.07</td>
+<td>1.91</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>2.27</td>
+<td>2.06</td>
+<td>1.95</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>2.33</td>
+<td>2.07</td>
+<td>2.05</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>2.33</td>
+<td>2.09</td>
+<td>1.99</td>
+<td>NoCollation : Original</td>
+<td>15.49%</td>
+</tr>
+<tr>
+<td></td>
+<td>2.23</td>
+<td>2.08</td>
+<td>2.04</td>
+<td>Optimized : Original</td>
+<td>10.70%</td>
+</tr>
+<tr>
+<td>AVG</td>
+<td>2.296</td>
+<td>2.074</td>
+<td>1.988</td>
+<td>NoCollation : Optimized</td>
+<td>4.33%</td>
+</tr>
+</tbody></table>
+<h4 id="constant-字符串比较"><a href="#constant-字符串比较" class="headerlink" title="constant 字符串比较"></a>constant 字符串比较</h4><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/pull/5569">tiflash#5569</a></p>
+<ul>
+<li>重点优化 str 列同 constant str 比较 <code>select ... from ... where xxx = &#39;xxx&#39; ...</code>。例如 <code>select count(*) from github_events where actor_login != &#39;zzzzzzz&#39;</code>。</li>
+<li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/4ab1564a17c2ed8bd78b5255f721def878fdd296/dbms/src/Functions/CollationOperatorOptimized.h#L261-L290">CollationOperatorOptimized.h#L261-L290</a> 面向 size 为 <code>[0, 16]</code> 的 constant str 利用模板展开计算</li>
+</ul>
+<p>Benchmark</p>
+<ul>
+<li>tpch-100</li>
+<li>tiflash x 1</li>
+<li>limit cpu up to 200%</li>
+<li>original commit: 30fc64c</li>
+<li>SQL: <code>select count(1) from lineitem where L_SHIPMODE = &#39;zzzz&#39;;</code></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th></th>
+<th></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>9.15</td>
+<td>7.52</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>9.33</td>
+<td>7.62</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>9.12</td>
+<td>7.58</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>9.23</td>
+<td>7.57</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>9.14</td>
+<td>7.65</td>
+<td></td>
+<td></td>
+<td>AVG(Original) &#x2F; AVG(Optimized) - 1.0</td>
+</tr>
+<tr>
+<td>AVG</td>
+<td>9.194</td>
+<td>7.588</td>
+<td></td>
+<td>Optimized : Original</td>
+<td>21.16%</td>
+</tr>
+</tbody></table>
+<hr>
+<p>SQL 参考 <a target="_blank" rel="noopener" href="https://github.com/pingcap/go-tpc/blob/69c6de2bd5157131427f6a31e083a1767a59002f/tpch/query.go#L274-L307">tpch-q10</a>: <code>select count(1) from lineitem where L_RETURNFLAG = &#39;R&#39;;</code></p>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th></th>
+<th></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>12.85</td>
+<td>8.56</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>12.87</td>
+<td>8.64</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>12.86</td>
+<td>8.45</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>12.75</td>
+<td>8.51</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>12.76</td>
+<td>8.64</td>
+<td></td>
+<td></td>
+<td>AVG(Original) &#x2F; AVG(Optimized) - 1.0</td>
+</tr>
+<tr>
+<td>AVG</td>
+<td>12.818</td>
+<td>8.56</td>
+<td></td>
+<td>Optimized : Original</td>
+<td>49.74%</td>
+</tr>
+</tbody></table>
+<h3 id="优化字符串搜索"><a href="#优化字符串搜索" class="headerlink" title="优化字符串搜索"></a>优化字符串搜索</h3><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/pull/5489">tiflash#5489</a></p>
+<ul>
+<li>早期实现 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/30fc64c323d262e0faad10150d31025d06efe517/dbms/src/Storages/Transaction/Collator.cpp#L71-L172">Collator.cpp#L71-L172</a> 是将字符逐个按照 collation 解析出来，再按照状态机匹配。其中包含太多虚函数调用，而且算法较为低效。</li>
+<li>重点优化 BIN COLLATION 处理表达式 <code>LIKE() ESCAPE()</code> 的行为 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/30fc64c323d262e0faad10150d31025d06efe517/dbms/src/Functions/CollationStringSearchOptimized.h#L28-L419">CollationStringSearchOptimized.h#L28-L419</a><ul>
+<li><code>utf8</code> 字符有明确的前缀编码，<code>binary</code> 更为简单，仅表示二进制字符。对于大小写敏感的场景，可以直接将 pattern 字符串进行划分，并按需进行字符串搜索（便于 SIMD 向量化处理）</li>
+<li>承袭至 CK 的 <code>ASCIICaseSensitiveStringSearcher</code> 或 <code>Volnitsky</code> 主要面向搜索引擎，在小字符串的场景中效果不如 <code>std::string_view::find()</code>。<code>Aho–Corasick</code> 之流会用到复杂状态机，根据 <a href="#Implementation-Of-Mem-Utils">上文分析</a>，效果估计会更差。</li>
+<li>此 PR 实现上先用了 <code>std::string_view::find()</code>，后续利用 <code>avx2_strstr</code> 优化后在此基础上还有 25.63% 的性能提升。</li>
+</ul>
+</li>
+</ul>
+<p>Benchmark</p>
+<ul>
+<li>tpch-100</li>
+<li>tiflash x 1</li>
+<li>limit cpu up to 200%</li>
+<li>original commit: a476307</li>
+<li>SQL: <code>select count(1) from orders where o_comment like &#39;%pending%deposits%&#39;;</code></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>35.77</td>
+<td>11</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>33.84</td>
+<td>10.88</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>35.32</td>
+<td>11.11</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>34.82</td>
+<td>11.21</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>34.94</td>
+<td>10.97</td>
+<td></td>
+<td>AVG(Original) &#x2F; AVG(Optimized) - 1.0</td>
+</tr>
+<tr>
+<td>AVG</td>
+<td>34.938</td>
+<td>11.034</td>
+<td>Optimized : Original</td>
+<td>216.64%</td>
+</tr>
+</tbody></table>
+<h3 id="优化字符串排序"><a href="#优化字符串排序" class="headerlink" title="优化字符串排序"></a>优化字符串排序</h3><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/pull/5375">tiflash#5375</a></p>
+<ul>
+<li>面向 BIN COLLATION 去虚拟化<ul>
+<li>TiDB 中 padding 的实现方式与 MySQL 的不同。在 MySQL 中，padding 是通过补齐空格实现的。而在 TiDB 中 padding 是通过裁剪掉末尾的空格来实现的。两种做法在绝大多数情况下是一致的，唯一的例外是字符串尾部包含小于空格 (0x20) 的字符时，例如 <code>&#39;a&#39; &lt; &#39;a\t&#39;</code> 在 TiDB 中的结果为 1，而在 MySQL 中，其等价于 <code>&#39;a &#39; &lt; &#39;a\t&#39;</code>，结果为 0。</li>
+</ul>
+</li>
+<li>假设大部分场景中字符串均不含末尾空格，乐观检测并执行快速路径 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/d61c1dff7b9f45d9466205c691019c1067192ea7/dbms/src/Storages/Transaction/CollatorUtils.h#L55-L61">CollatorUtils.h#L55-L61</a></li>
+</ul>
+<p>Benchmark</p>
+<ul>
+<li>tpch-100</li>
+<li>tiflash x 1</li>
+<li>limit cpu up to 200%</li>
+<li>original commit: 97342db</li>
+<li>SQL <code>select min(L_SHIPMODE) from lineitem;</code></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th>NoCollation</th>
+<th></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>11.35</td>
+<td>9.98</td>
+<td>9.81</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>11.33</td>
+<td>9.98</td>
+<td>9.88</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>11.23</td>
+<td>10</td>
+<td>9.84</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>11.22</td>
+<td>9.82</td>
+<td>9.73</td>
+<td>NoCollation : Original</td>
+<td>15.22%</td>
+</tr>
+<tr>
+<td></td>
+<td>11.58</td>
+<td>9.95</td>
+<td>9.96</td>
+<td>Optimized : Original</td>
+<td>14.04%</td>
+</tr>
+<tr>
+<td>AVG</td>
+<td>11.342</td>
+<td>9.946</td>
+<td>9.844</td>
+<td>NoCollation : Optimized</td>
+<td>1.04%</td>
+</tr>
+</tbody></table>
+<hr>
+<ul>
+<li>SQL <code>select max(L_SHIPMODE) from lineitem;</code></li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Time(s)</th>
+<th>Original</th>
+<th>Optimized</th>
+<th>NoCollation</th>
+<th></th>
+<th>Improvement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td></td>
+<td>13.56</td>
+<td>12.62</td>
+<td>12.77</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>13.74</td>
+<td>12.51</td>
+<td>12.27</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>13.35</td>
+<td>12.61</td>
+<td>12.32</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td>13.63</td>
+<td>12.63</td>
+<td>12.45</td>
+<td>NoCollation : Original</td>
+<td>9.13%</td>
+</tr>
+<tr>
+<td></td>
+<td>13.52</td>
+<td>12.66</td>
+<td>12.32</td>
+<td>Optimized : Original</td>
+<td>7.57%</td>
+</tr>
+<tr>
+<td>AVG</td>
+<td>13.56</td>
+<td>12.606</td>
+<td>12.426</td>
+<td>NoCollation : Optimized</td>
+<td>1.45%</td>
+</tr>
+</tbody></table>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/PingCAP/" rel="tag"># PingCAP</a>
+              <a href="/tags/TiFlash/" rel="tag"># TiFlash</a>
+              <a href="/tags/Database/" rel="tag"># Database</a>
+              <a href="/tags/HTAP/" rel="tag"># HTAP</a>
+              <a href="/tags/Compute/" rel="tag"># Compute</a>
+              <a href="/tags/SIMD/" rel="tag"># SIMD</a>
+              <a href="/tags/Collation/" rel="tag"># Collation</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2022/06/01/system/cpp-compile-optimize/" rel="prev" title="C++ 项目编译优化 —— TiFlash">
+                  <i class="fa fa-chevron-left"></i> C++ 项目编译优化 —— TiFlash
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Zhigao Tong</span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="/lib/animejs/lib/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/schemes/muse.js"></script><script src="/js/next-boot.js"></script>
+
+  
+<script src="/lib/hexo-generator-searchdb/dist/search.js" integrity="sha256-vXZMYLEqsROAXkEw93GGIvaB2ab+QW6w3+1ahD9nXXA=" crossorigin="anonymous"></script>
+<script src="/js/third-party/search/local-search.js"></script>
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>
