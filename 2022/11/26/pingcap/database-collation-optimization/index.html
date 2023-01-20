@@ -28,13 +28,13 @@
 <meta property="og:description" content="In database systems, Collation specifies how data is sorted and compared in a database. Collation provides the sorting rules, case, and accent sensitivity properties for the data in the database.  在数">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2022-11-25T16:00:00.000Z">
-<meta property="article:modified_time" content="2022-12-05T11:44:55.726Z">
+<meta property="article:modified_time" content="2023-01-20T02:27:47.175Z">
 <meta property="article:author" content="Zhigao Tong">
 <meta property="article:tag" content="PingCAP">
 <meta property="article:tag" content="TiFlash">
 <meta property="article:tag" content="Database">
-<meta property="article:tag" content="HTAP">
 <meta property="article:tag" content="Compute">
+<meta property="article:tag" content="HTAP">
 <meta property="article:tag" content="SIMD">
 <meta property="article:tag" content="Collation">
 <meta name="twitter:card" content="summary">
@@ -259,7 +259,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-12-05 19:44:55" itemprop="dateModified" datetime="2022-12-05T19:44:55+08:00">2022-12-05</time>
+      <time title="Modified: 2023-01-20 10:27:47" itemprop="dateModified" datetime="2023-01-20T10:27:47+08:00">2023-01-20</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -1887,7 +1887,7 @@
 <ul>
 <li><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/blob/bd1625562fb782d3052b0288f7b905521646c39a/libs/libmemcpy/folly/memcpy.S#L329-L353">folly&#x2F;memcpy.S#L329-L353</a></li>
 </ul>
-<p>现代 CPU 普遍采用多级缓存，以 <code>AMD Ryzen 9 5900X</code> 为例，其在 <code>WSL2</code> 中参数信息如下（实际物理环境是 L1 768KB, L2 6.0MB, L3 64.0MB）。</p>
+<p>现代 CPU 普遍采用多级缓存，以 <code>AMD Ryzen 9 5900X</code> 为例，其在 <code>WSL2</code> 中参数信息如下：</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">getconf -a | grep CACHE</span><br><span class="line">LEVEL1_ICACHE_SIZE                 32768</span><br><span class="line">LEVEL1_ICACHE_ASSOC                8</span><br><span class="line">LEVEL1_ICACHE_LINESIZE             64</span><br><span class="line">LEVEL1_DCACHE_SIZE                 32768</span><br><span class="line">LEVEL1_DCACHE_ASSOC                8</span><br><span class="line">LEVEL1_DCACHE_LINESIZE             64</span><br><span class="line">LEVEL2_CACHE_SIZE                  524288</span><br><span class="line">LEVEL2_CACHE_ASSOC                 8</span><br><span class="line">LEVEL2_CACHE_LINESIZE              64</span><br><span class="line">LEVEL3_CACHE_SIZE                  67108864</span><br><span class="line">LEVEL3_CACHE_ASSOC                 0</span><br><span class="line">LEVEL3_CACHE_LINESIZE              64</span><br><span class="line">LEVEL4_CACHE_SIZE                  0</span><br><span class="line">LEVEL4_CACHE_ASSOC                 0</span><br><span class="line">LEVEL4_CACHE_LINESIZE              0</span><br></pre></td></tr></table></figure>
 
 <p>通常每个 CPU 含有独立的 L1 和 L2 缓存，L3 缓存为所有核共享。L1 缓存分为 L1i（存储指令） 和 L1d（存储数据），L2 和 L3 缓存不区分指令和数据。参考 <a target="_blank" rel="noopener" href="https://www.7-cpu.com/cpu/Zen2.html">7-cpu.com&#x2F;cpu&#x2F;Zen2</a> 和 <a target="_blank" rel="noopener" href="https://en.wikichip.org/wiki/amd/microarchitectures/zen_3">amd&#x2F;microarchitectures&#x2F;zen_3</a>，缓存数据延迟约为：</p>
@@ -2854,8 +2854,8 @@
               <a href="/tags/PingCAP/" rel="tag"># PingCAP</a>
               <a href="/tags/TiFlash/" rel="tag"># TiFlash</a>
               <a href="/tags/Database/" rel="tag"># Database</a>
-              <a href="/tags/HTAP/" rel="tag"># HTAP</a>
               <a href="/tags/Compute/" rel="tag"># Compute</a>
+              <a href="/tags/HTAP/" rel="tag"># HTAP</a>
               <a href="/tags/SIMD/" rel="tag"># SIMD</a>
               <a href="/tags/Collation/" rel="tag"># Collation</a>
           </div>
@@ -2889,7 +2889,7 @@
 
 <div class="copyright">
   &copy; 
-  <span itemprop="copyrightYear">2022</span>
+  <span itemprop="copyrightYear">2023</span>
   <span class="with-love">
     <i class="fa fa-user"></i>
   </span>
