@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.1.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="/lib/@fortawesome/fontawesome-free/css/all.min.css" integrity="sha256-DfWjNxDkM94fVBWx1H5BMMp0Zq7luBlV8QRcSES7s+0=" crossorigin="anonymous">
+  <link rel="stylesheet" href="/lib/animate.css/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"solotzg.github.io","root":"/","images":"/images","scheme":"Mist","darkmode":false,"version":"8.11.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"manual","top_n_per_article":5,"unescape":false,"preload":false}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="Ref What is a materialized view?: A materialized view is a pre-computed data set derived from a query specification (the SELECT in the view definition) and stored for later use. Because the data is p">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Materialized View Simple Demo | TiDB">
+<meta property="og:url" content="https://solotzg.github.io/2023/07/18/pingcap/materialized-view-demo/index.html">
+<meta property="og:site_name" content="SOLOTZG">
+<meta property="og:description" content="Ref What is a materialized view?: A materialized view is a pre-computed data set derived from a query specification (the SELECT in the view definition) and stored for later use. Because the data is p">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://nightlies.apache.org/flink/flink-docs-master/fig/stream_barriers.svg">
+<meta property="og:image" content="https://ci.apache.org/projects/flink/flink-docs-release-1.12/fig/stream_aligning.svg">
+<meta property="og:image" content="https://nightlies.apache.org/flink/flink-docs-release-1.12/fig/stream_unaligning.svg">
+<meta property="article:published_time" content="2023-07-18T03:11:11.000Z">
+<meta property="article:modified_time" content="2023-07-28T08:40:15.450Z">
+<meta property="article:author" content="Zhigao Tong">
+<meta property="article:tag" content="PingCAP">
+<meta property="article:tag" content="Database">
+<meta property="article:tag" content="HTAP">
+<meta property="article:tag" content="TiDB">
+<meta property="article:tag" content="Materialized View">
+<meta property="article:tag" content="Hudi">
+<meta property="article:tag" content="Flink">
+<meta property="article:tag" content="Kafka">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://nightlies.apache.org/flink/flink-docs-master/fig/stream_barriers.svg">
+
+
+<link rel="canonical" href="https://solotzg.github.io/2023/07/18/pingcap/materialized-view-demo/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://solotzg.github.io/2023/07/18/pingcap/materialized-view-demo/","path":"2023/07/18/pingcap/materialized-view-demo/","title":"Materialized View Simple Demo | TiDB"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Materialized View Simple Demo | TiDB | SOLOTZG</title>
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">SOLOTZG</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close" role="button">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Implementation"><span class="nav-number">1.</span> <span class="nav-text">Implementation</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Flink"><span class="nav-number">1.1.</span> <span class="nav-text">Flink</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Flink-Checkpointing"><span class="nav-number">1.1.1.</span> <span class="nav-text">Flink Checkpointing</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#Checkpointing-%E5%AE%9E%E7%8E%B0"><span class="nav-number">1.1.1.1.</span> <span class="nav-text">Checkpointing 实现</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Flink-Consistency"><span class="nav-number">1.1.2.</span> <span class="nav-text">Flink Consistency</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Flink-Incremental-Materialized-View"><span class="nav-number">1.1.3.</span> <span class="nav-text">Flink Incremental Materialized View</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Storage"><span class="nav-number">1.2.</span> <span class="nav-text">Storage</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Consistency"><span class="nav-number">1.3.</span> <span class="nav-text">Consistency</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Usage"><span class="nav-number">2.</span> <span class="nav-text">Usage</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ENV"><span class="nav-number">2.1.</span> <span class="nav-text">ENV</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CMD"><span class="nav-number">2.2.</span> <span class="nav-text">CMD</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#deploy"><span class="nav-number">2.2.1.</span> <span class="nav-text">deploy</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#show-env-vars-info"><span class="nav-number">2.2.2.</span> <span class="nav-text">show env vars info</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#list-etl-jobs"><span class="nav-number">2.2.3.</span> <span class="nav-text">list etl jobs</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#list-ticdc-jobs"><span class="nav-number">2.2.4.</span> <span class="nav-text">list ticdc jobs</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#list-flink-jobs"><span class="nav-number">2.2.5.</span> <span class="nav-text">list flink jobs</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#list-kafka-topics"><span class="nav-number">2.2.6.</span> <span class="nav-text">list kafka topics</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#remove-etl-job"><span class="nav-number">2.2.7.</span> <span class="nav-text">remove etl job</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#remove-ticdc-job"><span class="nav-number">2.2.8.</span> <span class="nav-text">remove ticdc job</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#remove-hdfs-dir"><span class="nav-number">2.2.9.</span> <span class="nav-text">remove hdfs dir</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#remove-kafka-topic"><span class="nav-number">2.2.10.</span> <span class="nav-text">remove kafka topic</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#remove-flink-job"><span class="nav-number">2.2.11.</span> <span class="nav-text">remove flink job</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#remove-all-jobs"><span class="nav-number">2.2.12.</span> <span class="nav-text">remove all jobs</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#list-all-hobs"><span class="nav-number">2.2.13.</span> <span class="nav-text">list all hobs</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#down-demo-cluster"><span class="nav-number">2.2.14.</span> <span class="nav-text">down demo cluster</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#clean-all"><span class="nav-number">2.2.15.</span> <span class="nav-text">clean all</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#display-cluster"><span class="nav-number">2.2.16.</span> <span class="nav-text">display cluster</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Run-With-External-TiDB-Cluster"><span class="nav-number">2.3.</span> <span class="nav-text">Run With External TiDB Cluster</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Tips"><span class="nav-number">2.4.</span> <span class="nav-text">Tips</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Example1-Sink-Incremental-Data"><span class="nav-number">3.</span> <span class="nav-text">Example1: Sink Incremental Data</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Example2-ETL"><span class="nav-number">4.</span> <span class="nav-text">Example2: ETL</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Example3-Consistency"><span class="nav-number">5.</span> <span class="nav-text">Example3: Consistency</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Example4-Consistency-Aggregation-Materialized-View"><span class="nav-number">6.</span> <span class="nav-text">Example4: Consistency Aggregation Materialized View</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Example5-Consistency-Inner-Join-amp-Aggregation-Materialized-View"><span class="nav-number">7.</span> <span class="nav-text">Example5: Consistency Inner Join &amp; Aggregation Materialized View</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Integration-Test"><span class="nav-number">8.</span> <span class="nav-text">Integration Test</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Further-Implementation"><span class="nav-number">9.</span> <span class="nav-text">Further Implementation</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Zhigao Tong"
+      src="/images/avatar.gif">
+  <p class="site-author-name" itemprop="name">Zhigao Tong</p>
+  <div class="site-description" itemprop="description">Zhigao Tong's blog</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">9</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">30</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author site-overview-item animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/solotzg" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;solotzg" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:solotzg@gmail.com" title="E-Mail → mailto:solotzg@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://solotzg.github.io/2023/07/18/pingcap/materialized-view-demo/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Zhigao Tong">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="SOLOTZG">
+      <meta itemprop="description" content="Zhigao Tong's blog">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Materialized View Simple Demo | TiDB | SOLOTZG">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Materialized View Simple Demo | TiDB
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+
+      <time title="Created: 2023-07-18 11:11:11" itemprop="dateCreated datePublished" datetime="2023-07-18T11:11:11+08:00">2023-07-18</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">Edited on</span>
+      <time title="Modified: 2023-07-28 16:40:15" itemprop="dateModified" datetime="2023-07-28T16:40:15+08:00">2023-07-28</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/PingCAP/" itemprop="url" rel="index"><span itemprop="name">PingCAP</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <blockquote>
+<p>Ref <a target="_blank" rel="noopener" href="https://materialize.com/guides/materialized-views/#what-is-a-materialized-view">What is a materialized view?</a>: A materialized view is a pre-computed data set derived from a query specification (the SELECT in the view definition) and stored for later use. Because the data is pre-computed, querying a materialized view is faster than executing a query against the base table of the view. This performance difference can be significant when a query is run frequently or is sufficiently complex. As a result, materialized views can speed up expensive aggregation, projection, and selection operations, especially those that run frequently and that run on large data sets.</p>
+</blockquote>
+<p>本文记录一项基于 <a target="_blank" rel="noopener" href="https://github.com/apache/flink">Flink</a> &#x2F; <a target="_blank" rel="noopener" href="https://github.com/apache/hudi">Hudi</a> &#x2F; <a target="_blank" rel="noopener" href="https://github.com/apache/kafka">Kafka</a> &#x2F; <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflow">TiCDC</a> 以及 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tidb">TiDB</a> 构建 <code>Materialized View</code>（物化视图，aka <code>MV</code>）的简易 demo。</p>
+<span id="more"></span>
+
+<p>相对于普通视图，MV 需要解决几个问题：</p>
+<ul>
+<li>数据一致性：TiDB 可以凭借全局唯一 <code>Time Stamp Oracle</code>（aka <code>TSO</code>） 来保障事务线性一致性。如果将 TiDB 作为数据源接入到第三方系统，需保障外部应用何种级别的一致性（无一致性，最终一致，线性一致）？如何解决多元异构数据源带来的一致性问题？</li>
+<li>数据存储：如何支持可更新数据的存储？如何构建 MV 并维护状态？</li>
+<li>数据加工：<code>ETL</code>（Extract Transform Load）流程是 OLAP 领域必不可少的一环，较常见的有拼宽表，字段过滤，类型转换，数据分区等。如何令 MV 支持可定制化的 ETL？如何以 <code>SQL</code>（Structured Query Language）形式支持外部定义？</li>
+</ul>
+<h2 id="Implementation"><a href="#Implementation" class="headerlink" title="Implementation"></a>Implementation</h2><h3 id="Flink"><a href="#Flink" class="headerlink" title="Flink"></a>Flink</h3><p>Flink 是目前业内广泛应用的流批一体处理平台，支持 SQL 的形式定义流式计算任务，为了方便搭建 demo，文中借助 Flink 来实现 ETL，构建并维护 MV。</p>
+<ul>
+<li>Flink 状态（state）是被定义在算子（operator&#x2F;task）中的空间，通过存储过去事件中的信息来影响未来事件的处理，即主要用于保存中间计算结果和缓存数据。<ul>
+<li>Ref：<a target="_blank" rel="noopener" href="https://flink.apache.org/2018/01/30/managing-large-state-in-apache-flink-an-intro-to-incremental-checkpointing">Managing Large State in Apache Flink: An Intro to Incremental Checkpointing</a></li>
+</ul>
+</li>
+<li>Flink 有 2 种基本类型的状态：<ul>
+<li>托管状态（Managed State）</li>
+<li>原生状态（Raw State）：需要开发者自己管理，序列化&#x2F;反序列化；</li>
+</ul>
+</li>
+<li>Flink 的分布式状态流（stateful stream）容错机制（通过 <a href="#Flink-Checkpointing">Checkpointing</a> 实现）较为完善，并可保证端到端 <code>exactly-once</code> 的状态转换（详见 <a href="#Flink-Consistency">Flink Consistency</a>）<ul>
+<li>Ref：<a target="_blank" rel="noopener" href="https://nightlies.apache.org/flink/flink-docs-master/docs/learn-flink/fault_tolerance">Fault Tolerance via State Snapshots</a></li>
+</ul>
+</li>
+</ul>
+<h4 id="Flink-Checkpointing"><a href="#Flink-Checkpointing" class="headerlink" title="Flink Checkpointing"></a>Flink Checkpointing</h4><p><a target="_blank" rel="noopener" href="https://nightlies.apache.org/flink/flink-docs-master/docs/dev/datastream/fault-tolerance/checkpointing">Checkpointing</a></p>
+<ul>
+<li>Flink 中的 checkpoint 表示应用（FlinkJob）的一致性快照，主要由 2 部分组成：应用的当前状态（相当于内部所有算子状态快照集合）；输入数据流中的偏移量；</li>
+<li>Flink 按照规则和配置周期性生成 checkpoint，然后将 checkpoint 写入到可靠的存储中（通常为分布式文件系统）；将 checkpoint 写入存储为异步操作，也就意味着 Flink 应用的处理流程不会被 checkpointing 机制阻塞；</li>
+<li>当异常发生时，Flink 使用最近一次完成的 checkpoint 作为状态的初始点来重启应用；</li>
+<li>Flink 1.3 开始支持在 <code>rocksdb</code> 状态后端中使用 <code>增量快照（incremental checkpoint）</code>，可优化大状态（GB，TB 级状态）的场景；</li>
+<li><a target="_blank" rel="noopener" href="https://nightlies.apache.org/flink/flink-docs-release-1.13/docs/deployment/config/">参考配置</a><ul>
+<li><code>state.backend</code>：hashmap 或 rocksdb</li>
+<li><code>state.checkpoints.dir</code></li>
+<li><code>execution.checkpointing.interval</code></li>
+<li><code>execution.checkpointing.mode</code></li>
+<li><code>state.backend.incremental</code></li>
+<li><code>state.backend.rocksdb.localdir</code>：参考 <a target="_blank" rel="noopener" href="https://flink.apache.org/2021/01/18/using-rocksdb-state-backend-in-apache-flink-when-and-how/#state-location-in-rocksdb">state-location-in-rocksdb</a>，建议使用本地 SSD 磁盘来提升吞吐量；</li>
+</ul>
+</li>
+</ul>
+<h5 id="Checkpointing-实现"><a href="#Checkpointing-实现" class="headerlink" title="Checkpointing 实现"></a>Checkpointing 实现</h5><p><img src="https://nightlies.apache.org/flink/flink-docs-master/fig/stream_barriers.svg" alt="flink/flink-docs-master/fig/stream_barriers.svg"></p>
+<p>Flink 使用 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Chandy-Lamport_algorithm">Chandy-Lamport</a> 算法的一种变体，称为异步屏障快照（<code>asynchronous barrier snapshotting</code>）。</p>
+<ul>
+<li><p>当 task manager 接收到 job manager 的命令开启一个 checkpoint，它会让所有数据源记录自身的偏移量，并在数据流中插入按序编号的 <code>checkpoint barriers</code>，这些 barrier 流过作业图，用于指示 checkpoint 的边界；作业图中的每个算子接收到 barrier 时，会记录自身的状态；</p>
+</li>
+<li><p>checkpoint <code>n</code> 包含每个算子处理完 barrier <code>n</code> 之前所有数据和事件后的状态；</p>
+</li>
+<li><p>对于有多个输入流的算子，则会进行 <code>barrier alignment</code> 操作来对齐 barrier <img src="https://ci.apache.org/projects/flink/flink-docs-release-1.12/fig/stream_aligning.svg" alt="flink_stream_aligning"></p>
+<ul>
+<li>对齐 barrier 可以减少状态快照的数据量；如图中所示，输入流在 barrier <code>n</code> 位置前均无待处理的数据，算子状态快照也就无需保存这类信息</li>
+<li>对齐操作缺点：<ul>
+<li>增大延迟（快的 barrier 需阻塞等待），拖慢 checkpointing 流程</li>
+<li>面向类似双流 <code>equal-join</code> 的场景，可能因为输入流延迟不同而导致行为不符合预期<ul>
+<li>例如预期被处理的数据对分别为 <code>(1,a)</code> <code>(2,b)</code> <code>(3,c)</code>。对齐 barrier 之后，则变成 <code>(1,e)</code> <code>(2,f)</code> <code>(3,g)</code>。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>barrier 这类抽象可以引申为 checkpoint 的边界；明确的边界可以有效地避免冗余；面向 <code>unaligned barrier</code> 这类无明确边界的场景，则需要在状态快照中额外保存冗余数据：<img src="https://nightlies.apache.org/flink/flink-docs-release-1.12/fig/stream_unaligning.svg" alt="flink_unaligned_barrier"></p>
+<ul>
+<li>在 barrier 对齐的场景中，barrier 必须遵循其在数据流中的位置，算子需要等待 barrier 被实际处理才开始快照；对于 barrier 不对齐的场景，当任一数据流的 barrier 到达输入缓存，算子立即保存 3 部分数据至 checkpoint；然后将 barrier 优先放到输出缓存的队首；需保存的数据如下（例如图中绿色部分）：<ul>
+<li>所有数据流中 barrier 之前的全部未处理数据；<ul>
+<li>如果 barrier 尚未出现，需阻塞等待，因为此时数据流已持久化的 checkpoint 序号一定小于 barrier，异常后无法恢复；如果要处理该场景，则需要自定义应用的 checkpoint 机制，令数据流自身的 checkpoint 可独立控制；</li>
+</ul>
+</li>
+<li>算子输入缓存中 barrier 之前的全部未处理数据；</li>
+<li>算子输出缓存中的数据；</li>
+</ul>
+</li>
+<li>不对齐 barrier 可以避免对齐造成的阻塞等待</li>
+<li>从 checkpoint 恢复时，不对齐的数据会被 checkpoint 恢复到相应的数据队列中，所以依然能提供 <code>exactly-once</code> 保证</li>
+<li>不对齐 barrier 的缺点：<ul>
+<li>由于要持久化冗余数据，加重存储负载</li>
+<li>随着 checkpoint 增大，可能增大作业恢复时间</li>
+<li>适合容易产生高反压的复杂作业，但是对于像数据 ETL 同步等简单作业，可以选择轻量级的对齐处理。<ul>
+<li>反压是在实时数据处理中，数据管道某个节点上游产生数据的速度大于该节点处理数据速度的一种现象。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h4 id="Flink-Consistency"><a href="#Flink-Consistency" class="headerlink" title="Flink Consistency"></a>Flink Consistency</h4><p><a target="_blank" rel="noopener" href="https://flink.apache.org/2018/02/28/an-overview-of-end-to-end-exactly-once-processing-in-apache-flink-with-apache-kafka-too/">An Overview of End-to-End Exactly-Once Processing in Apache Flink</a></p>
+<p>Flink 的一致性可以分为 <code>3</code> 个级别，由弱到强依次为：</p>
+<ol>
+<li><code>at-most-once</code>：无一致性保障；</li>
+<li><code>at-least-once</code>：数据或事件至少被处理一次（不丢失，有重复）；下游可实现幂等机制来保障一致性；</li>
+<li><code>exactly-once</code>：数据或事件只会被处理一次（不丢失，不重复）；</li>
+</ol>
+<p>每个组件都保证其自身的一致性，端到端的一致性级别取决于所有组件中一致性最弱的。倘若要实现 <code>exactly-once</code> 一致性，以最简单的端到端处理部分为例：</p>
+<ul>
+<li>总体分为 3 个部分，数据流向：<code>source -&gt; internal -&gt; sink</code></li>
+<li><code>source</code>：需要外部源可指定数据读取的位置（例如 Kafka 消息队列）<ul>
+<li>位置信息作为状态的一部分，异常恢复时可重新开始消费；</li>
+</ul>
+</li>
+<li><code>internal</code>：<a href="#Flink-Checkpointing">Checkpointing</a> 机制；</li>
+<li><code>sink</code>：需要保证从故障恢复时，数据不会重复写入外部系统；sink 端有 2 种具体实现方式：<ul>
+<li><code>幂等（Idempotent）</code>写入：操作可以重复执行很多次，但只导致一次结果更改</li>
+<li><code>事务性（Transactional）</code>写入：一个事务中的操作要么全部成功，要么全部失败<ul>
+<li>应用程序中一系列严密的操作，所有操作必须成功完成，否则在每个操作中所作的所有更改都会被撤销；</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>sink 端事务性写入实现：</p>
+<ul>
+<li>外部 sink 系统必须支持事务性写入（构建的事务需要与 checkpoint 对应），等 checkpoint 完成时，才把所有对应的结果写入外部系统；</li>
+<li>对于事务性写入，具体有 2 种实现方式：<ul>
+<li><code>预写日志（WAL）</code><ul>
+<li>把结果数据保存到状态中作为 WAL，等 checkpoint 完成时再写入下游；<ul>
+<li>具体的写入行为可视作基于 WAL 的幂等回放；</li>
+</ul>
+</li>
+<li>该方式易于实现，但存在几个缺点：<ul>
+<li>导致状态数据量增大，增加存储负载；</li>
+<li>写入需要等到 checkpoint 完成，会导致数据延迟；</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>两阶段提交（2PC）</code><ul>
+<li>checkpoint 启动时开启 sink 系统的事务</li>
+<li>结果数据写入该事务，但不提交</li>
+<li>等 checkpoint 完成时，提交该事务，实现真正写入</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>2PC 实现：</p>
+<ul>
+<li>事务启动：外部 sink 系统开启一个事务，并与 checkpoint <code>n</code> 相关联</li>
+<li>事务预写：事务在 checkpoint <code>n</code> 范围内接受数据预写入</li>
+<li>事务提交：<ul>
+<li>sink 任务处理 barrier <code>n</code> 时，等事务可变成 <code>可提交</code> 的状态后，再保存状态快照。</li>
+<li>所有子任务状态快照保存完毕，表示 checkpoint <code>n</code> 已完成。<ul>
+<li>出现异常后应用则恢复至该 checkpoint，sink 任务需要恢复该事务并提交。</li>
+</ul>
+</li>
+<li>上游广播通知 checkpoint <code>n</code> 完成，sink 任务正式提交该事务。</li>
+<li>提交事务的行为必须是幂等操作。<ul>
+<li>Flink 从 checkpoint 故障恢复时总会尝试提交相关事务（通过冗余来实现容错，否则需要存储额外的信息表示事务状态）</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>事务撤回</li>
+</ul>
+<h4 id="Flink-Incremental-Materialized-View"><a href="#Flink-Incremental-Materialized-View" class="headerlink" title="Flink Incremental Materialized View"></a>Flink Incremental Materialized View</h4><p>增量物化视图（<code>Incremental Materialized View</code>，aks <code>IMV</code>） 本质上等同于 Flink 中的一个有状态算子，以 <a href="#Example4-Consistency-Aggregation-Materialized-View">Example4</a> 为例：</p>
+<ul>
+<li>ETL 定义的处理流程为 <code>select b, sum(a) from ... group by b</code></li>
+<li>输入 source 为 Kafka 消息队列，输出 sink 系统为 Hudi</li>
+<li>算子状态包含以 <code>b</code> 字段为 Key，<code>sum(a)</code> 为 Value 的基本元素，状态数据量与 Key 数量呈正相关</li>
+<li><code>sum()</code> 聚合可通过累加中间结果得到最终值，因而能够增量维护<ul>
+<li>输入数据为 upsert 类型，则累加 <code>a</code> 字段新旧值的差值</li>
+<li>输入数据为 delete 类型，则减去旧值</li>
+</ul>
+</li>
+<li>状态的实际存储后端可选：内存&#x2F;文件&#x2F;rocksdb<ul>
+<li>建议配置为 rocksdb 后段，增量快照面对大状态 checkpointing 较为高效</li>
+</ul>
+</li>
+<li>输入&#x2F;输出系统满足 <code>exactly-once</code> 的基本要求，整体上该应用可保证 <code>exactly-once</code> 一致性</li>
+</ul>
+<p><code>min()</code> &#x2F; <code>max()</code> 函数不支持直接累加，其状态机维护类似于 <code>select col_?, count(*) from ? group by col_? order by col_? [desc] limit 1</code>，当 count 为 0 时则删除相关元素。</p>
+<p><code>avg()</code> 函数则类似 <code>select sum(col_?), count(col_?) from ?</code>，对外输出时再执行算数除法。</p>
+<p><code>distinct()</code> 函数则类似 <code>select count(*) from (select col_?, count(*) from ? group by col_?)</code>。</p>
+<p>Join 场景下的 IMV 维护与上面类似，主要不同体现在数据源的构造和处理流程上。Flink 本身提供的 <a target="_blank" rel="noopener" href="https://nightlies.apache.org/flink/flink-docs-master/docs/dev/table/sql/queries/joins/">Join</a> 类型大致分为：</p>
+<ul>
+<li>Regular join<ul>
+<li>left join</li>
+<li>right join</li>
+<li>inner join（默认类型）</li>
+<li>outer join</li>
+</ul>
+</li>
+<li>Interval Join</li>
+<li>Temporal Join</li>
+<li>Lookup Join（在 <a href="#Example5-Consistency-Inner-Join-amp-Aggregation-Materialized-View">Example5</a> 被使用）</li>
+<li>Window Join</li>
+</ul>
+<p><code>Interval Join</code> 和 <code>Window Join</code> 属于比较典型的流式计算场景下的功能，需要外部约束来保证数据一致性。</p>
+<h3 id="Storage"><a href="#Storage" class="headerlink" title="Storage"></a>Storage</h3><p>Hudi 作为下一代数据湖产品，加强了对于数据更新的支持。其不仅兼容 Hadoop 系的数仓生态，而且与 Flink 的衔接也较为完善。文中以 Hudi 和 HDFS 作为 MV 相关的数据存储系统。</p>
+<h3 id="Consistency"><a href="#Consistency" class="headerlink" title="Consistency"></a>Consistency</h3><p>TiCDC 是一款 TiDB 增量数据同步工具，通过拉取上游 TiKV 的数据变更日志，TiCDC 可以将数据解析为有序的行级变更数据输出到下游。</p>
+<ul>
+<li>借助 Kafka 实现存量数据和增量数据的线性一致。该方式会引入额外的数据同步开销，实际场景中则可以通过存量数据构建 MV Base 部分，利用增量数据构建 MV Delta 部分。详见 <a href="#Example3-Consistency">Example3</a>，<a href="#Example4-Consistency-Aggregation-Materialized-View">Example4</a>，<a href="#Example5-Consistency-Inner-Join-amp-Aggregation-Materialized-View">Example5</a><ul>
+<li>先选取构建 TiCDC 任务时的 TSO 作为快照点 <code>S</code>，令导出增量数据到 Topic <code>I</code>；</li>
+<li>利用 Dumpling 导出 <code>S</code> 对应的存量数据并同步到新 Topic <code>B</code>，该步骤完成后再提交异步任务，将 <code>I</code> 的数据持续同步到 <code>B</code>；</li>
+<li>下游 Flink 则只消费 <code>B</code>；</li>
+<li><code>I</code> 和 <code>B</code> 均只有 <code>1</code> 个 Partition 以保证线性一致性；</li>
+</ul>
+</li>
+<li><strong>Option</strong>：理论上 TiCDC 还可支持将 <code>DDL</code> 和 <code>DML</code> 的 <code>commit-ts</code> 通过 <a target="_blank" rel="noopener" href="https://docs.pingcap.com/tidb/dev/ticdc-canal-json#tidb-extension-field">ticdc-canal-json#tidb-extension-field</a> 字段导出，令下游根据 ts 还原事务上下文。这类流程需要自定义 Flink 插件实现，不在本 demo 的展示范围。</li>
+</ul>
+<p>假如可以保证单表数据源的事务线性一致性，且写入当量可控，则线性一致的单表 IMV 实现并不复杂。但如果涉及到多表 Join，则关联数据造成的写入放大就很难控制（极端情况例如笛卡尔积），对于事务的相关处理也需要考虑多方场景。通常的 OLAP 场景都存有基本假设：</p>
+<ul>
+<li>或维度表不更新</li>
+<li>或维度表写入模式为 <code>Insert Only</code></li>
+<li>或关联数据写放大可控</li>
+<li>或数据源保证线性一致性<ul>
+<li>或数据源严格依照事务顺序排序</li>
+<li>或数据源可根据事务相关序列标识（例如 TiDB 体系的 <code>commit-ts</code>）回溯上下文</li>
+</ul>
+</li>
+<li>或仅考虑最终一致性</li>
+<li>或不考虑一致性</li>
+</ul>
+<p>本文中给出的 Join 实现较为简单，仅令维度表写入模式为 <code>Insert Only</code>，数据关联时则令下游直接回溯上游 TiDB 原始数据。</p>
+<h2 id="Usage"><a href="#Usage" class="headerlink" title="Usage"></a>Usage</h2><h3 id="ENV"><a href="#ENV" class="headerlink" title="ENV"></a>ENV</h3><p>install basic components</p>
+<ul>
+<li>install <code>mysql</code>, <code>python3</code>, <code>git</code>, <code>java-1.8.0-openjdk</code>, <code>maven</code>, <code>docker</code></li>
+<li><code>pip3 install requests mysql-connector-python</code></li>
+<li>disable <code>firewalld</code></li>
+<li><code>sudo root</code></li>
+</ul>
+<p>prepare source code</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> <span class="variable">$&#123;self_deploy_path&#125;</span></span><br><span class="line"><span class="built_in">cd</span> <span class="variable">$&#123;self_deploy_path&#125;</span></span><br><span class="line">git <span class="built_in">clone</span> https://github.com/apache/hudi.git</span><br><span class="line"><span class="built_in">cd</span> hudi</span><br><span class="line">git checkout release-0.12.3</span><br><span class="line"><span class="built_in">cd</span> <span class="variable">$&#123;self_deploy_path&#125;</span></span><br><span class="line">git <span class="built_in">clone</span> https://github.com/solotzg/__tmp.git</span><br><span class="line">self_demo_scripts_path=<span class="variable">$&#123;self_deploy_path&#125;</span>/__tmp</span><br><span class="line"><span class="built_in">cd</span> <span class="variable">$&#123;self_deploy_path&#125;</span></span><br><span class="line">git <span class="built_in">clone</span> https://github.com/apache/flink.git</span><br><span class="line"><span class="built_in">cd</span> flink</span><br><span class="line">git checkout release-1.13.6</span><br></pre></td></tr></table></figure>
+
+<p>prepare hudi</p>
+<ul>
+<li>set <code>JAVA_HOME</code> to jdk 1.8 like <code>/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.372.b07-2.el9.x86_64</code></li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> <span class="variable">$&#123;self_demo_scripts_path&#125;</span></span><br><span class="line"><span class="built_in">mkdir</span> .tmp.env_libs</span><br><span class="line"><span class="built_in">export</span> self_demo_env_libs=<span class="variable">$&#123;self_demo_scripts_path&#125;</span>/.tmp.env_libs</span><br><span class="line">JAVA_HOME=<span class="string">&quot;xxxxxx&quot;</span> ./setup-demo.py --cmd compile_hudi --hudi_repo=<span class="variable">$&#123;self_deploy_path&#125;</span>/hudi</span><br><span class="line"><span class="built_in">cp</span> <span class="variable">$&#123;self_deploy_path&#125;</span>/hudi/packaging/hudi-flink-bundle/target/hudi-flink1.13-bundle-0.12.3.jar <span class="variable">$&#123;self_demo_env_libs&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>prepare flink</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">flink_repo_path=<span class="variable">$&#123;self_deploy_path&#125;</span>/flink</span><br><span class="line"><span class="built_in">cd</span> <span class="variable">$&#123;flink_repo_path&#125;</span>/flink-connectors/flink-sql-connector-kafka</span><br><span class="line">mvn clean package -DskipTests -Drat.skip=<span class="literal">true</span></span><br><span class="line"><span class="built_in">cp</span> <span class="variable">$&#123;flink_repo_path&#125;</span>/flink-connectors/flink-sql-connector-kafka/target/flink-sql-connector-kafka_2.11-1.13.6.jar <span class="variable">$&#123;self_demo_env_libs&#125;</span></span><br><span class="line"><span class="built_in">cd</span> <span class="variable">$&#123;flink_repo_path&#125;</span>/flink-connectors/flink-connector-jdbc</span><br><span class="line">mvn clean package -DskipTests -Drat.skip=<span class="literal">true</span></span><br><span class="line"><span class="built_in">cp</span> <span class="variable">$&#123;flink_repo_path&#125;</span>/flink-connectors/flink-connector-jdbc/target/flink-connector-jdbc_2.11-1.13.6.jar <span class="variable">$&#123;self_demo_env_libs&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>prepare mysql</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl https://repo.maven.apache.org/maven2/mysql/mysql-connector-java/8.0.20/mysql-connector-java-8.0.20.jar -o <span class="variable">$&#123;self_demo_env_libs&#125;</span>/mysql-connector-java-8.0.20.jar</span><br></pre></td></tr></table></figure>
+
+<h3 id="CMD"><a href="#CMD" class="headerlink" title="CMD"></a>CMD</h3><h4 id="deploy"><a href="#deploy" class="headerlink" title="deploy"></a>deploy</h4><ul>
+<li>use <code>12345</code> as the start port for different components</li>
+<li>use <code>release-7.1</code> as the version of tidb cluster</li>
+<li>set a <code>compose_project_name</code> for docker compose env. otherwise <code>pingcap</code> will be the default value</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> <span class="variable">$&#123;self_demo_scripts_path&#125;</span></span><br><span class="line">./setup-demo.py --cmd deploy_hudi_flink_tidb --start_port=12345 --env_libs=<span class="variable">$&#123;self_demo_env_libs&#125;</span> --hudi_repo=<span class="variable">$&#123;self_deploy_path&#125;</span>/hudi --tidb_branch=release-7.1 --compose_project_name=<span class="variable">$&#123;self_project_name&#125;</span></span><br></pre></td></tr></table></figure>
+
+<h4 id="show-env-vars-info"><a href="#show-env-vars-info" class="headerlink" title="show env vars info"></a>show env vars info</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> <span class="variable">$&#123;self_demo_scripts_path&#125;</span></span><br><span class="line">./setup-demo.py --cmd show_env_vars_info</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">    <span class="string">&quot;flink_jobmanager_port&quot;</span>: 12345,</span><br><span class="line">    <span class="string">&quot;hadoop_web_port&quot;</span>: 12346,</span><br><span class="line">    <span class="string">&quot;hdfs_port&quot;</span>: 12347,</span><br><span class="line">    <span class="string">&quot;historyserver_port&quot;</span>: 12348,</span><br><span class="line">    <span class="string">&quot;hiveserver_port&quot;</span>: 12349,</span><br><span class="line">    <span class="string">&quot;kafka_port&quot;</span>: 12350,</span><br><span class="line">    <span class="string">&quot;spark_master_port&quot;</span>: 12351,</span><br><span class="line">    <span class="string">&quot;spark_web_port&quot;</span>: 12352,</span><br><span class="line">    <span class="string">&quot;HUDI_WS&quot;</span>: <span class="string">&quot;/.../demo/hudi&quot;</span>,</span><br><span class="line">    <span class="string">&quot;pingcap_demo_path&quot;</span>: <span class="string">&quot;/.../demo/pingcap-lakehouse&quot;</span>,</span><br><span class="line">    <span class="string">&quot;env_libs&quot;</span>: <span class="string">&quot;/.../demo/pingcap-lakehouse/.tmp.env_libs&quot;</span>,</span><br><span class="line">    <span class="string">&quot;hufi-flink-compose&quot;</span>: <span class="string">&quot;/.../demo/pingcap-lakehouse/.tmp.docker-compose_hadoop_hive_spark_flink.yml&quot;</span>,</span><br><span class="line">    <span class="string">&quot;hudi_flink_running&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">    <span class="string">&quot;pd_port&quot;</span>: 12353,</span><br><span class="line">    <span class="string">&quot;ticdc_port&quot;</span>: 12354,</span><br><span class="line">    <span class="string">&quot;tidb_port&quot;</span>: 12355,</span><br><span class="line">    <span class="string">&quot;tikv_status_port&quot;</span>: 12356,</span><br><span class="line">    <span class="string">&quot;TIDB_BRANCH&quot;</span>: <span class="string">&quot;release-7.1&quot;</span>,</span><br><span class="line">    <span class="string">&quot;tidb-compose&quot;</span>: <span class="string">&quot;/.../demo/pingcap-lakehouse/.tmp.tidb-cluster.yml&quot;</span>,</span><br><span class="line">    <span class="string">&quot;tidb_running&quot;</span>: <span class="literal">true</span>,</span><br><span class="line">    <span class="string">&quot;demo_host&quot;</span>: <span class="string">&quot;10.2.12.125&quot;</span>,</span><br><span class="line">    <span class="string">&quot;start_port&quot;</span>: 12345,</span><br><span class="line">    <span class="string">&quot;JAVA_HOME&quot;</span>: <span class="string">&quot;/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.372.b07-2.el9.x86_64&quot;</span>,</span><br><span class="line">    <span class="string">&quot;etl_jobs&quot;</span>: &#123;&#125;,</span><br><span class="line">    <span class="string">&quot;COMPOSE_PROJECT_NAME&quot;</span>: <span class="string">&quot;pingcap&quot;</span>,</span><br><span class="line">    <span class="string">&quot;LAKE_HOUSE_COMPOSE_PROJECT_NAME&quot;</span>: <span class="string">&quot;pingcap_lakehouse&quot;</span>,</span><br><span class="line">    <span class="string">&quot;TIDB_COMPOSE_PROJECT_NAME&quot;</span>: <span class="string">&quot;pingcap_tidb&quot;</span>,</span><br><span class="line">    <span class="string">&quot;hudi_compiled&quot;</span>: <span class="string">&quot;2023-07-03 13:49:42.261539&quot;</span>,</span><br><span class="line">    <span class="string">&quot;FLINK_VERSION&quot;</span>: <span class="string">&quot;1.13&quot;</span>,</span><br><span class="line">    <span class="string">&quot;KAFKA_VERSION&quot;</span>: <span class="string">&quot;2.4.0&quot;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="list-etl-jobs"><a href="#list-etl-jobs" class="headerlink" title="list etl jobs"></a>list etl jobs</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd list_etl_jobs</span><br></pre></td></tr></table></figure>
+
+<h4 id="list-ticdc-jobs"><a href="#list-ticdc-jobs" class="headerlink" title="list ticdc jobs"></a>list ticdc jobs</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd list_ticdc_jobs</span><br></pre></td></tr></table></figure>
+
+<h4 id="list-flink-jobs"><a href="#list-flink-jobs" class="headerlink" title="list flink jobs"></a>list flink jobs</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd list_flink_jobs</span><br></pre></td></tr></table></figure>
+
+<h4 id="list-kafka-topics"><a href="#list-kafka-topics" class="headerlink" title="list kafka topics"></a>list kafka topics</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd list_kafka_topics</span><br></pre></td></tr></table></figure>
+
+<h4 id="remove-etl-job"><a href="#remove-etl-job" class="headerlink" title="remove etl job"></a>remove etl job</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd rm_etl_job --etl_job_id etl1</span><br></pre></td></tr></table></figure>
+
+<h4 id="remove-ticdc-job"><a href="#remove-ticdc-job" class="headerlink" title="remove ticdc job"></a>remove ticdc job</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd rm_ticdc_job --cdc_changefeed_id etl1-sink-1</span><br></pre></td></tr></table></figure>
+
+<h4 id="remove-hdfs-dir"><a href="#remove-hdfs-dir" class="headerlink" title="remove hdfs dir"></a>remove hdfs dir</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd rm_hdfs_dir --hdfs_url=hdfs://namenode:8020/a/b/c</span><br></pre></td></tr></table></figure>
+
+<h4 id="remove-kafka-topic"><a href="#remove-kafka-topic" class="headerlink" title="remove kafka topic"></a>remove kafka topic</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd rm_kafka_topic --kafka_topic etl3-sink-3</span><br></pre></td></tr></table></figure>
+
+<h4 id="remove-flink-job"><a href="#remove-flink-job" class="headerlink" title="remove flink job"></a>remove flink job</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd rm_flink_job --flink_job_id 8f488441a8c155eca62655927cb1c02e</span><br></pre></td></tr></table></figure>
+
+<h4 id="remove-all-jobs"><a href="#remove-all-jobs" class="headerlink" title="remove all jobs"></a>remove all jobs</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd rm_all_jobs</span><br></pre></td></tr></table></figure>
+
+<h4 id="list-all-hobs"><a href="#list-all-hobs" class="headerlink" title="list all hobs"></a>list all hobs</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd list_all_jobs</span><br></pre></td></tr></table></figure>
+
+<h4 id="down-demo-cluster"><a href="#down-demo-cluster" class="headerlink" title="down demo cluster"></a>down demo cluster</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> <span class="variable">$&#123;self_demo_scripts_path&#125;</span></span><br><span class="line">./setup-demo.py --cmd=down_tidb</span><br><span class="line">./setup-demo.py --cmd=down_hudi_flink</span><br><span class="line"></span><br><span class="line"><span class="comment"># If you need to down tidb, hudi, flink at same time, use:</span></span><br><span class="line">./setup-demo.py --cmd=down</span><br></pre></td></tr></table></figure>
+
+<h4 id="clean-all"><a href="#clean-all" class="headerlink" title="clean all"></a>clean all</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd=clean</span><br></pre></td></tr></table></figure>
+
+<h4 id="display-cluster"><a href="#display-cluster" class="headerlink" title="display cluster"></a>display cluster</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd list_cluster_env</span><br></pre></td></tr></table></figure>
+
+<h3 id="Run-With-External-TiDB-Cluster"><a href="#Run-With-External-TiDB-Cluster" class="headerlink" title="Run With External TiDB Cluster"></a>Run With External TiDB Cluster</h3><p><code>Required argv</code></p>
+<ul>
+<li>cdc_bin_path</li>
+<li>ticdc_addr</li>
+<li>tidb_addr</li>
+</ul>
+<p><code>Optional argv</code></p>
+<ul>
+<li>dumpling_bin_path</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd sink_task --sink_task_desc=<span class="string">&quot;etl3.3.demo.t3&quot;</span> --sink_task_flink_schema_path ./example3/flink.sql.template --cdc_bin_path=/.../pingcap-lakehouse-demo/cdc --ticdc_addr=10.2.12.124:12354 --tidb_addr=10.2.12.124:12355</span><br><span class="line">./setup-demo.py --cmd rm_all_jobs --cdc_bin_path=/.../pingcap-lakehouse-demo/cdc --ticdc_addr=10.2.12.124:12354 --tidb_addr=10.2.12.124:12355 --dumpling_bin_path=/tmp/bin/dumpling</span><br></pre></td></tr></table></figure>
+
+<h3 id="Tips"><a href="#Tips" class="headerlink" title="Tips"></a>Tips</h3><p><a target="_blank" rel="noopener" href="https://nightlies.apache.org/flink/flink-docs-release-1.18/docs/dev/table/sqlclient/#sql-client">Flink SQL Client</a>:</p>
+<ul>
+<li><code>SET table.dml-sync=true;</code> is necessary if you need to execute DML statements synchronously. It is useful to load data from external files.</li>
+<li><code>create table ? with(&#39;connector&#39;=&#39;kafka&#39;, ..., &#39;scan.startup.mode&#39;=&#39;earliest-offset&#39;);</code> use earliest-offset mode to avoid losing data.</li>
+<li><code>SET sql-client.execution.result-mode=TABLEAU;</code><ul>
+<li>The tableau mode is more like a traditional way which will display the results in the screen directly with a tableau format. The displaying content will be influenced by the query execution type (execution.type).</li>
+</ul>
+</li>
+<li><code>SET execution.runtime-mode=&#39;batch&#39;;</code> use batch mode to make flink agg sql <code>select count() | min() | max()</code> only show the final result</li>
+</ul>
+<p>kafka</p>
+<ul>
+<li>To run kafka without zookeeper, it can be using with Kafka Raft metadata mode: <a target="_blank" rel="noopener" href="https://developer.confluent.io/learn/kraft/">KRaft</a><ul>
+<li><code>Kafka 3.3.1</code>: Mark KRaft as Production Ready</li>
+</ul>
+</li>
+</ul>
+<h2 id="Example1-Sink-Incremental-Data"><a href="#Example1-Sink-Incremental-Data" class="headerlink" title="Example1: Sink Incremental Data"></a>Example1: Sink Incremental Data</h2><p>create an example tidb table</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> <span class="variable">$&#123;self_demo_scripts_path&#125;</span></span><br><span class="line"><span class="comment"># tidb_port: 12355</span></span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root &lt; example/tidb.sql</span><br><span class="line"></span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;select * from demo.t1&quot;</span></span><br><span class="line">+---+------+</span><br><span class="line">| a | b    |</span><br><span class="line">+---+------+</span><br><span class="line">| 1 |    1 |</span><br><span class="line">| 2 |    2 |</span><br><span class="line">| 3 |    3 |</span><br><span class="line">| 4 |    4 |</span><br><span class="line">+---+------+</span><br><span class="line"></span><br><span class="line"><span class="built_in">cat</span> example/tidb.sql</span><br><span class="line"></span><br><span class="line">create database IF NOT EXISTS demo;</span><br><span class="line">create table IF NOT EXISTS demo.t1(a int PRIMARY KEY, b int);</span><br><span class="line">insert into demo.t1 values(1,1),(2,2),(3,3);</span><br><span class="line">insert into demo.t1 (select max(a)+1,max(a)+1 from demo.t1);</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>create a template for flink and hudi like <code>example/flink.sql.template</code></p>
+<ul>
+<li>necessary fields:<ul>
+<li>${kafka_topic}</li>
+<li>${kafka_address}</li>
+<li>${hdfs_address}</li>
+</ul>
+</li>
+</ul>
+<p>create sink table task</p>
+<ul>
+<li><code>sink_task_desc</code>: <code>format: etl_uid.table_id.db_name.table_name</code>. sink tidb table: <code>ticdc -&gt; kafka -&gt; flink -&gt; hudi</code></li>
+<li><code>sink_task_flink_schema_path</code>: path to sql file include table schema for flink and hudi</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> <span class="variable">$&#123;self_demo_scripts_path&#125;</span></span><br><span class="line">./setup-demo.py --cmd=sink_task --sink_task_desc=<span class="string">&quot;etl1.1.demo.t1&quot;</span> --sink_task_flink_schema_path=<span class="string">&quot;<span class="variable">$&#123;self_demo_scripts_path&#125;</span>/example/flink.sql.template&quot;</span> --env_libs=<span class="variable">$&#123;self_demo_env_libs&#125;</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>setup-demo.py</code> 自动填上相关字段并生成文件 <code>.tmp.flink.sink-&#123;etl_uid&#125;-&#123;table_id&#125;-&#123;db&#125;.&#123;table_name&#125;.sql</code></li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">create</span> database demo_flink;</span><br><span class="line"><span class="keyword">set</span> execution.checkpointing.interval <span class="operator">=</span> <span class="number">2</span>sec;</span><br><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> demo_flink.t1(a <span class="type">int</span> <span class="keyword">PRIMARY</span> KEY, b <span class="type">int</span>) <span class="keyword">with</span>(<span class="string">&#x27;connector&#x27;</span><span class="operator">=</span><span class="string">&#x27;kafka&#x27;</span>, <span class="string">&#x27;topic&#x27;</span><span class="operator">=</span><span class="string">&#x27;etl1-sink-1&#x27;</span>, <span class="string">&#x27;properties.bootstrap.servers&#x27;</span><span class="operator">=</span><span class="string">&#x27;kafkabroker:9092&#x27;</span>, <span class="string">&#x27;properties.group.id&#x27;</span><span class="operator">=</span><span class="string">&#x27;pingcap-demo-group&#x27;</span>, <span class="string">&#x27;format&#x27;</span><span class="operator">=</span><span class="string">&#x27;canal-json&#x27;</span>, <span class="string">&#x27;scan.startup.mode&#x27;</span><span class="operator">=</span><span class="string">&#x27;latest-offset&#x27;</span>);</span><br><span class="line"><span class="keyword">create</span> database demo_hudi;</span><br><span class="line"><span class="keyword">CREATE</span> <span class="keyword">TABLE</span> demo_hudi.t1(</span><br><span class="line">  a <span class="type">INT</span> <span class="keyword">PRIMARY</span> KEY <span class="keyword">NOT</span> ENFORCED,</span><br><span class="line">  b <span class="type">INT</span></span><br><span class="line">) <span class="keyword">WITH</span> (</span><br><span class="line">  <span class="string">&#x27;connector&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hudi&#x27;</span>,</span><br><span class="line">  <span class="string">&#x27;path&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hdfs://namenode:8020/pingcap/demo/hudi/etl1-sink-1&#x27;</span>,</span><br><span class="line">  <span class="string">&#x27;table.type&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;MERGE_ON_READ&#x27;</span>,</span><br><span class="line">  <span class="string">&#x27;read.streaming.enabled&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;true&#x27;</span>,</span><br><span class="line">  <span class="string">&#x27;read.streaming.check-interval&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;1&#x27;</span></span><br><span class="line">);</span><br><span class="line"><span class="keyword">INSERT</span> <span class="keyword">INTO</span> demo_hudi.t1(a,b) (<span class="keyword">select</span> a,b <span class="keyword">from</span> demo_flink.t1);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>get new files: <code>.tmp.flink.sink-etl1-1-demo.t1.sql</code>; <code>.tmp.ticdc-config-etl1-1-demo.t1.toml</code></li>
+</ul>
+<p>insert record to tidb</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;insert into demo.t1 values(9,9),(10,10)&quot;</span></span><br><span class="line">.</span><br><span class="line">..</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>use flink client to query <code>demo_hudi.t1</code>, use flink client and get 2 incremental records <code>(9,9),(10,10)</code></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">cd $&#123;self_demo_scripts_path&#125;</span><br><span class="line">.<span class="operator">/</span>run<span class="operator">-</span>flink<span class="operator">-</span>bash.sh <span class="operator">/</span>pingcap<span class="operator">/</span>demo<span class="operator">/</span>flink<span class="operator">-</span><span class="keyword">sql</span><span class="operator">-</span>client.sh</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">create</span> database demo_hudi;</span><br><span class="line">[INFO] <span class="keyword">Execute</span> statement succeed.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">CREATE</span> <span class="keyword">TABLE</span> demo_hudi.t1(</span><br><span class="line"><span class="operator">&gt;</span>   a <span class="type">INT</span> <span class="keyword">PRIMARY</span> KEY <span class="keyword">NOT</span> ENFORCED,</span><br><span class="line"><span class="operator">&gt;</span>   b <span class="type">INT</span></span><br><span class="line"><span class="operator">&gt;</span> ) <span class="keyword">WITH</span> (</span><br><span class="line"><span class="operator">&gt;</span>   <span class="string">&#x27;connector&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hudi&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span>   <span class="string">&#x27;path&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hdfs://namenode:8020/pingcap/demo/hudi/etl1-sink-1&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span>   <span class="string">&#x27;table.type&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;MERGE_ON_READ&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span>   <span class="string">&#x27;read.streaming.enabled&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;true&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span>   <span class="string">&#x27;read.streaming.check-interval&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;1&#x27;</span></span><br><span class="line"><span class="operator">&gt;</span> );</span><br><span class="line"><span class="operator">&gt;</span> </span><br><span class="line">[INFO] <span class="keyword">Execute</span> statement succeed.</span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">set</span> <span class="keyword">sql</span><span class="operator">-</span>client.execution.result<span class="operator">-</span>mode <span class="operator">=</span> tableau;</span><br><span class="line">[INFO] Session property has been set.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t1;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           a <span class="operator">|</span>           b <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">9</span> <span class="operator">|</span>           <span class="number">9</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>          <span class="number">10</span> <span class="operator">|</span>          <span class="number">10</span> <span class="operator">|</span></span><br></pre></td></tr></table></figure>
+
+<p>update <code>demo.t1</code></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;update demo.t1 set b=a*10;&quot;</span></span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;delete from demo.t1 where a &lt; 3&quot;</span></span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;select * from demo.t1&quot;</span>     </span><br><span class="line">+----+------+</span><br><span class="line">| a  | b    |</span><br><span class="line">+----+------+</span><br><span class="line">|  3 |   30 |</span><br><span class="line">|  4 |   40 |</span><br><span class="line">|  9 |   90 |</span><br><span class="line">| 10 |  100 |</span><br><span class="line">+----+------+</span><br></pre></td></tr></table></figure>
+
+<p>use flink client and disable <code>read.streaming.enabled</code></p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">drop</span> <span class="keyword">table</span> demo_hudi.t1;</span><br><span class="line">[INFO] <span class="keyword">Execute</span> statement succeed.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">CREATE</span> <span class="keyword">TABLE</span> demo_hudi.t1(</span><br><span class="line"><span class="operator">&gt;</span>   a <span class="type">INT</span> <span class="keyword">PRIMARY</span> KEY <span class="keyword">NOT</span> ENFORCED,</span><br><span class="line"><span class="operator">&gt;</span>   b <span class="type">INT</span></span><br><span class="line"><span class="operator">&gt;</span> ) <span class="keyword">WITH</span> (</span><br><span class="line"><span class="operator">&gt;</span>   <span class="string">&#x27;connector&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hudi&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span>   <span class="string">&#x27;path&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hdfs://namenode:8020/pingcap/demo/hudi/etl1-sink-1&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span>   <span class="string">&#x27;table.type&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;MERGE_ON_READ&#x27;</span></span><br><span class="line"><span class="operator">&gt;</span> );</span><br><span class="line">[INFO] <span class="keyword">Execute</span> statement succeed.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t1;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           a <span class="operator">|</span>           b <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>          <span class="number">10</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span>          <span class="number">20</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>          <span class="number">30</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">4</span> <span class="operator">|</span>          <span class="number">40</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">9</span> <span class="operator">|</span>          <span class="number">90</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>          <span class="number">10</span> <span class="operator">|</span>         <span class="number">100</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line">Received a total <span class="keyword">of</span> <span class="number">6</span> <span class="keyword">rows</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;delete from demo.t1 where a &lt; 3&quot;</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t1;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           a <span class="operator">|</span>           b <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>          <span class="number">30</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">4</span> <span class="operator">|</span>          <span class="number">40</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">9</span> <span class="operator">|</span>          <span class="number">90</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>          <span class="number">10</span> <span class="operator">|</span>         <span class="number">100</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line">Received a total <span class="keyword">of</span> <span class="number">4</span> <span class="keyword">rows</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="Example2-ETL"><a href="#Example2-ETL" class="headerlink" title="Example2: ETL"></a>Example2: ETL</h2><p>sink tables and store parts of columns by partition</p>
+<ul>
+<li><code>example2/tidb.sql</code></li>
+<li><code>example2/flink.sql.template</code><ul>
+<li>partition by <code>DATE_FORMAT(b, &#39;yyyyMMdd&#39;)</code> as partition</li>
+<li><code>INSERT INTO demo_hudi.t2(a,b,partition) (select a, b, DATE_FORMAT(b, &#39;yyyyMMdd&#39;) as partition from demo_flink.t2 where c is not null);</code></li>
+</ul>
+</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">mysql -h 0.0.0.0 -P 12355 -u root &lt; example2/tidb.sql</span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;select *from demo.t2&quot;</span></span><br><span class="line">+---+---------------------+------+</span><br><span class="line">| a | b                   | c    |</span><br><span class="line">+---+---------------------+------+</span><br><span class="line">| 1 | 2023-06-13 05:07:40 | 1    |</span><br><span class="line">| 2 | 2023-06-13 05:07:40 | 2    |</span><br><span class="line">| 3 | 2023-06-13 05:07:40 | NULL |</span><br><span class="line">+---+---------------------+------+</span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;update demo.t2 set c=a*10&quot;</span></span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;select * from demo.t2&quot;</span></span><br><span class="line">+---+---------------------+------+</span><br><span class="line">| a | b                   | c    |</span><br><span class="line">+---+---------------------+------+</span><br><span class="line">| 1 | 2023-06-13 05:07:40 | 10   |</span><br><span class="line">| 2 | 2023-06-13 05:07:40 | 20   |</span><br><span class="line">| 3 | 2023-06-13 05:07:40 | 30   |</span><br><span class="line">| 4 | 2023-06-13 05:19:52 | 40   |</span><br><span class="line">| 5 | 2023-06-13 05:19:52 | 50   |</span><br><span class="line">+---+---------------------+------+</span><br></pre></td></tr></table></figure>
+
+<p>create sink table etl job</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd sink_task --sink_task_desc=<span class="string">&quot;etl2.2.demo.t2&quot;</span> --sink_task_flink_schema_path ./example2/flink.sql.template</span><br></pre></td></tr></table></figure>
+
+<p>insert 2 records (4,’4’) and (5, null)</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;insert into demo.t2 (a,c) values (4,&#x27;4&#x27;),(5, null)&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>query by flink client</p>
+<ul>
+<li>ref <code>.tmp.flink.sink-etl2-2-demo.t2.sql</code></li>
+<li>ref content above</li>
+</ul>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line">.<span class="operator">/</span>run<span class="operator">-</span>flink<span class="operator">-</span>bash.sh <span class="operator">/</span>pingcap<span class="operator">/</span>demo<span class="operator">/</span>flink<span class="operator">-</span><span class="keyword">sql</span><span class="operator">-</span>client.sh</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">create</span> database demo_hudi;</span><br><span class="line">[INFO] <span class="keyword">Execute</span> statement succeed.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">CREATE</span> <span class="keyword">TABLE</span> demo_hudi.t2(</span><br><span class="line"><span class="operator">&gt;</span> a <span class="type">INT</span> <span class="keyword">PRIMARY</span> KEY <span class="keyword">NOT</span> ENFORCED,</span><br><span class="line"><span class="operator">&gt;</span> b <span class="type">TIMESTAMP</span>(<span class="number">3</span>),</span><br><span class="line"><span class="operator">&gt;</span> `<span class="keyword">partition</span>` <span class="type">VARCHAR</span>(<span class="number">20</span>)</span><br><span class="line"><span class="operator">&gt;</span> )</span><br><span class="line"><span class="operator">&gt;</span> PARTITIONED <span class="keyword">BY</span> (`<span class="keyword">partition</span>`)</span><br><span class="line"><span class="operator">&gt;</span> <span class="keyword">WITH</span> (</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;connector&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hudi&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;path&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hdfs://namenode:8020/pingcap/demo/hudi_t2&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;table.type&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;MERGE_ON_READ&#x27;</span></span><br><span class="line"><span class="operator">&gt;</span> );</span><br><span class="line">[INFO] <span class="keyword">Execute</span> statement succeed.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">set</span> <span class="keyword">sql</span><span class="operator">-</span>client.execution.result<span class="operator">-</span>mode <span class="operator">=</span> tableau;</span><br><span class="line">[INFO] Session property has been set.</span><br><span class="line"></span><br><span class="line"><span class="comment">-- record with a = 5 and c is null will be filtered</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t2;</span><br><span class="line"><span class="number">2023</span><span class="number">-06</span><span class="number">-13</span> <span class="number">05</span>:<span class="number">25</span>:<span class="number">38</span>,<span class="number">525</span> INFO  org.apache.hadoop.conf.Configuration.deprecation             [] <span class="operator">-</span> mapred.job.map.memory.mb <span class="keyword">is</span> deprecated. Instead, use mapreduce.map.memory.mb</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------------------+--------------------------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           a <span class="operator">|</span>                       b <span class="operator">|</span>                      <span class="keyword">partition</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------------------+--------------------------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">4</span> <span class="operator">|</span> <span class="number">2023</span><span class="number">-06</span><span class="number">-13</span> <span class="number">05</span>:<span class="number">19</span>:<span class="number">52.000</span> <span class="operator">|</span>                       <span class="number">20230613</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------------------+--------------------------------+</span></span><br><span class="line">Received a total <span class="keyword">of</span> <span class="number">1</span> <span class="type">row</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;update demo.t2 set c=a*10&quot;</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t2;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------------------+--------------------------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           a <span class="operator">|</span>                       b <span class="operator">|</span>                      <span class="keyword">partition</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------------------+--------------------------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span> <span class="number">2023</span><span class="number">-06</span><span class="number">-13</span> <span class="number">05</span>:<span class="number">07</span>:<span class="number">40.000</span> <span class="operator">|</span>                       <span class="number">20230613</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span> <span class="number">2023</span><span class="number">-06</span><span class="number">-13</span> <span class="number">05</span>:<span class="number">07</span>:<span class="number">40.000</span> <span class="operator">|</span>                       <span class="number">20230613</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span> <span class="number">2023</span><span class="number">-06</span><span class="number">-13</span> <span class="number">05</span>:<span class="number">07</span>:<span class="number">40.000</span> <span class="operator">|</span>                       <span class="number">20230613</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">4</span> <span class="operator">|</span> <span class="number">2023</span><span class="number">-06</span><span class="number">-13</span> <span class="number">05</span>:<span class="number">19</span>:<span class="number">52.000</span> <span class="operator">|</span>                       <span class="number">20230613</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">5</span> <span class="operator">|</span> <span class="number">2023</span><span class="number">-06</span><span class="number">-13</span> <span class="number">05</span>:<span class="number">19</span>:<span class="number">52.000</span> <span class="operator">|</span>                       <span class="number">20230613</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------------------+--------------------------------+</span></span><br><span class="line">Received a total <span class="keyword">of</span> <span class="number">5</span> <span class="keyword">rows</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="Example3-Consistency"><a href="#Example3-Consistency" class="headerlink" title="Example3: Consistency"></a>Example3: Consistency</h2><p>sink historical and incremental data of table to flink then hudi</p>
+<ul>
+<li><code>example3/tidb.sql</code></li>
+<li><code>example3/flink.sql.template</code><ul>
+<li>use filesystem of flink to upsert data into base kafka topic</li>
+<li>upsert incremental data from self-defined kafka into base kafka topic</li>
+<li>create <code>hoodie_stream_write</code> and upsert incremental data from base kafka topic</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">mysql -h 0.0.0.0 -P 12355 -u root &lt; example3/tidb.sql</span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;select *from demo.t3&quot;</span></span><br><span class="line">+---+------+</span><br><span class="line">| a | b    |</span><br><span class="line">+---+------+</span><br><span class="line">| 1 |    1 |</span><br><span class="line">| 2 |    2 |</span><br><span class="line">| 3 |    3 |</span><br><span class="line">| 4 |    4 |</span><br><span class="line">+---+------+</span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;update demo.t3 set b=a*10&quot;</span></span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;select * from demo.t3&quot;</span></span><br><span class="line">+---+------+</span><br><span class="line">| a | b    |</span><br><span class="line">+---+------+</span><br><span class="line">| 1 |   10 |</span><br><span class="line">| 2 |   20 |</span><br><span class="line">| 3 |   30 |</span><br><span class="line">| 4 |   40 |</span><br><span class="line">+---+------+</span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;delete from demo.t3 where a &lt; 3&quot;</span></span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;select* from demo.t3&quot;</span></span><br><span class="line">+---+------+</span><br><span class="line">| a | b    |</span><br><span class="line">+---+------+</span><br><span class="line">| 3 |   30 |</span><br><span class="line">| 4 |   40 |</span><br><span class="line">+---+------+</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line">.<span class="operator">/</span>run<span class="operator">-</span>flink<span class="operator">-</span>bash.sh <span class="operator">/</span>pingcap<span class="operator">/</span>demo<span class="operator">/</span>flink<span class="operator">-</span><span class="keyword">sql</span><span class="operator">-</span>client.sh</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">create</span> database demo_hudi;</span><br><span class="line"><span class="operator">&gt;</span></span><br><span class="line">[INFO] <span class="keyword">Execute</span> statement succeed.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">CREATE</span> <span class="keyword">TABLE</span> demo_hudi.t3(</span><br><span class="line"><span class="operator">&gt;</span> a <span class="type">INT</span> <span class="keyword">PRIMARY</span> KEY <span class="keyword">NOT</span> ENFORCED,</span><br><span class="line"><span class="operator">&gt;</span> b <span class="type">INT</span></span><br><span class="line"><span class="operator">&gt;</span> ) <span class="keyword">WITH</span> (</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;connector&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hudi&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;path&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hdfs://namenode:8020/pingcap/demo/etl3-sink-3&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;table.type&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;MERGE_ON_READ&#x27;</span></span><br><span class="line"><span class="operator">&gt;</span> );</span><br><span class="line"><span class="operator">&gt;</span></span><br><span class="line">[INFO] <span class="keyword">Execute</span> statement succeed.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">set</span> <span class="keyword">sql</span><span class="operator">-</span>client.execution.result<span class="operator">-</span>mode <span class="operator">=</span> tableau;</span><br><span class="line">[INFO] Session property has been set.</span><br><span class="line"></span><br><span class="line"><span class="comment">-- read 4 records which are historical data</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t3;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           a <span class="operator">|</span>           b <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">4</span> <span class="operator">|</span>           <span class="number">4</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line">Received a total <span class="keyword">of</span> <span class="number">4</span> <span class="keyword">rows</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;update demo.t3 set b=a*10&quot;</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t3;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           a <span class="operator">|</span>           b <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>          <span class="number">10</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span>          <span class="number">20</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>          <span class="number">30</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">4</span> <span class="operator">|</span>          <span class="number">40</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line">Received a total <span class="keyword">of</span> <span class="number">4</span> <span class="keyword">rows</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;delete from demo.t3 where a &lt; 3&quot;</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t3;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           a <span class="operator">|</span>           b <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>          <span class="number">30</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">4</span> <span class="operator">|</span>          <span class="number">40</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+-------------+</span></span><br><span class="line">Received a total <span class="keyword">of</span> <span class="number">2</span> <span class="keyword">rows</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="Example4-Consistency-Aggregation-Materialized-View"><a href="#Example4-Consistency-Aggregation-Materialized-View" class="headerlink" title="Example4: Consistency Aggregation Materialized View"></a>Example4: Consistency Aggregation Materialized View</h2><p>sink tables and calculate incremental aggregation result</p>
+<ul>
+<li><code>example4/tidb.sql</code></li>
+<li><code>example4/flink.sql.template</code><ul>
+<li>dump data of table <code>demo.t4</code> into csv file</li>
+<li>load csv file into kafka topic <code>etl4-sink-4_base</code></li>
+<li>sink incremental data to <code>etl4-sink-4</code></li>
+<li>sink topic <code>etl4-sink-4</code> into topic <code>etl4-sink-4_base</code></li>
+<li>ticdc -&gt; kafka -&gt; flink streaming aggregation -&gt; hudi: <code>insert into demo_hudi.t4_agg (c,d) (select b, sum(a) from demo_flink.t4 group by b);</code></li>
+</ul>
+</li>
+</ul>
+<p>create sink table etl job</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./setup-demo.py --cmd sink_task --sink_task_desc=<span class="string">&quot;etl4.4.demo.t4&quot;</span> --sink_task_flink_schema_path ./example4/flink.sql.template</span><br></pre></td></tr></table></figure>
+
+<p>run tidb sql</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">mysql -h 0.0.0.0 -P 12355 -u root &lt; example4/tidb.sql</span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;select * from demo.t4&quot;</span></span><br><span class="line">+---+------+</span><br><span class="line">| a | b    |</span><br><span class="line">+---+------+</span><br><span class="line">| 1 |    1 |</span><br><span class="line">| 2 |    2 |</span><br><span class="line">| 3 |    3 |</span><br><span class="line">| 4 |    4 |</span><br><span class="line">+---+------+</span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;select b, sum(a) from demo.t4 group by b&quot;</span></span><br><span class="line">+------+--------+</span><br><span class="line">| b    | <span class="built_in">sum</span>(a) |</span><br><span class="line">+------+--------+</span><br><span class="line">|    2 |      2 |</span><br><span class="line">|    4 |      4 |</span><br><span class="line">|    1 |      1 |</span><br><span class="line">|    3 |      3 |</span><br><span class="line">+------+--------+</span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;delete from demo.t4 where a = 3&quot;</span></span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;insert into demo.t4 (select max(a)+1,max(a)+1 from demo.t4)&quot;</span></span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;update demo.t4 set b = 10&quot;</span></span><br><span class="line">mysql -h 0.0.0.0 -P 12355 -u root -e <span class="string">&quot;SELECT b, sum(a) from demo.t4 GROUP BY b&quot;</span></span><br><span class="line">+------+--------+</span><br><span class="line">| b    | <span class="built_in">sum</span>(a) |</span><br><span class="line">+------+--------+</span><br><span class="line">|   10 |     12 |</span><br><span class="line">+------+--------+</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br></pre></td><td class="code"><pre><span class="line">.<span class="operator">/</span>run<span class="operator">-</span>flink<span class="operator">-</span>bash.sh <span class="operator">/</span>pingcap<span class="operator">/</span>demo<span class="operator">/</span>flink<span class="operator">-</span><span class="keyword">sql</span><span class="operator">-</span>client.sh</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">create</span> database demo_hudi;</span><br><span class="line"><span class="operator">&gt;</span></span><br><span class="line">[INFO] <span class="keyword">Execute</span> statement succeed.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">CREATE</span> <span class="keyword">TABLE</span> demo_hudi.t4_agg(</span><br><span class="line"><span class="operator">&gt;</span> c <span class="type">INT</span> <span class="keyword">PRIMARY</span> KEY <span class="keyword">NOT</span> ENFORCED,</span><br><span class="line"><span class="operator">&gt;</span> d <span class="type">BIGINT</span></span><br><span class="line"><span class="operator">&gt;</span> ) <span class="keyword">WITH</span> (</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;connector&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hudi&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;path&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hdfs://namenode:8020/pingcap/demo/etl4-sink-4/agg&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;table.type&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;MERGE_ON_READ&#x27;</span></span><br><span class="line"><span class="operator">&gt;</span> );</span><br><span class="line"><span class="operator">&gt;</span></span><br><span class="line">[INFO] <span class="keyword">Execute</span> statement succeed.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">SET</span> <span class="keyword">sql</span><span class="operator">-</span>client.execution.result<span class="operator">-</span>mode<span class="operator">=</span>TABLEAU;</span><br><span class="line">[INFO] Session property has been set.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">SET</span> execution.runtime<span class="operator">-</span>mode<span class="operator">=</span><span class="string">&#x27;batch&#x27;</span>;</span><br><span class="line">[INFO] Session property has been set.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t4_agg;</span><br><span class="line"><span class="number">2023</span><span class="number">-06</span><span class="number">-29</span> <span class="number">07</span>:<span class="number">40</span>:<span class="number">24</span>,<span class="number">347</span> INFO  org.apache.hadoop.conf.Configuration.deprecation             [] <span class="operator">-</span> mapred.job.map.memory.mb <span class="keyword">is</span> deprecated. Instead, use mapreduce.map.memory.mb</span><br><span class="line"><span class="operator">+</span><span class="comment">---+---+</span></span><br><span class="line"><span class="operator">|</span> c <span class="operator">|</span> d <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">---+---+</span></span><br><span class="line"><span class="operator">|</span> <span class="number">1</span> <span class="operator">|</span> <span class="number">1</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="number">2</span> <span class="operator">|</span> <span class="number">2</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="number">3</span> <span class="operator">|</span> <span class="number">3</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="number">4</span> <span class="operator">|</span> <span class="number">4</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">---+---+</span></span><br><span class="line"><span class="number">4</span> <span class="keyword">rows</span> <span class="keyword">in</span> <span class="keyword">set</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;delete from demo.t4 where a = 3&quot;</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t4_agg;</span><br><span class="line"><span class="operator">+</span><span class="comment">---+---+</span></span><br><span class="line"><span class="operator">|</span> c <span class="operator">|</span> d <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">---+---+</span></span><br><span class="line"><span class="operator">|</span> <span class="number">1</span> <span class="operator">|</span> <span class="number">1</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="number">2</span> <span class="operator">|</span> <span class="number">2</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="number">4</span> <span class="operator">|</span> <span class="number">4</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">---+---+</span></span><br><span class="line"><span class="number">3</span> <span class="keyword">rows</span> <span class="keyword">in</span> <span class="keyword">set</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;insert into demo.t4 (select max(a)+1,max(a)+1 from demo.t4)&quot;</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t4_agg;</span><br><span class="line"><span class="operator">+</span><span class="comment">---+---+</span></span><br><span class="line"><span class="operator">|</span> c <span class="operator">|</span> d <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">---+---+</span></span><br><span class="line"><span class="operator">|</span> <span class="number">1</span> <span class="operator">|</span> <span class="number">1</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="number">2</span> <span class="operator">|</span> <span class="number">2</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="number">4</span> <span class="operator">|</span> <span class="number">4</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="number">5</span> <span class="operator">|</span> <span class="number">5</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">---+---+</span></span><br><span class="line"><span class="number">4</span> <span class="keyword">rows</span> <span class="keyword">in</span> <span class="keyword">set</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;update demo.t4 set b = 10&quot;</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t4_agg;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+----+</span></span><br><span class="line"><span class="operator">|</span>  c <span class="operator">|</span>  d <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+----+</span></span><br><span class="line"><span class="operator">|</span> <span class="number">10</span> <span class="operator">|</span> <span class="number">12</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+----+</span></span><br><span class="line"><span class="number">1</span> <span class="type">row</span> <span class="keyword">in</span> <span class="keyword">set</span></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">CREATE</span> <span class="keyword">TABLE</span> demo_hudi.t4_agg_stream(</span><br><span class="line"><span class="operator">&gt;</span> c <span class="type">INT</span> <span class="keyword">PRIMARY</span> KEY <span class="keyword">NOT</span> ENFORCED,</span><br><span class="line"><span class="operator">&gt;</span> d <span class="type">BIGINT</span></span><br><span class="line"><span class="operator">&gt;</span> ) <span class="keyword">WITH</span> (</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;connector&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hudi&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;path&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hdfs://namenode:8020/pingcap/demo/etl4-sink-4/agg&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;table.type&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;MERGE_ON_READ&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;read.streaming.enabled&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;true&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;read.streaming.check-interval&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;1&#x27;</span></span><br><span class="line"><span class="operator">&gt;</span> );</span><br><span class="line">[INFO] <span class="keyword">Execute</span> statement succeed.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">SET</span> <span class="keyword">sql</span><span class="operator">-</span>client.execution.result<span class="operator">-</span>mode<span class="operator">=</span>TABLEAU;</span><br><span class="line">[INFO] Session property has been set.</span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;delete from demo.t4 where a = 3&quot;</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t4_agg_stream;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           c <span class="operator">|</span>                    d <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>                    <span class="number">1</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span>                    <span class="number">2</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                    <span class="number">3</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">4</span> <span class="operator">|</span>                    <span class="number">4</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;insert into demo.t4 (select max(a)+1,max(a)+1 from demo.t4)&quot;</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t4_agg_stream;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           c <span class="operator">|</span>                    d <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>                    <span class="number">1</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span>                    <span class="number">2</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                    <span class="number">3</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">4</span> <span class="operator">|</span>                    <span class="number">4</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">5</span> <span class="operator">|</span>                    <span class="number">5</span> <span class="operator">|</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;update demo.t4 set b = 10&quot;</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t4_agg_stream;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           c <span class="operator">|</span>                    d <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>                    <span class="number">1</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span>                    <span class="number">2</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                    <span class="number">3</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">4</span> <span class="operator">|</span>                    <span class="number">4</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">5</span> <span class="operator">|</span>                    <span class="number">5</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">4</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">5</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>          <span class="number">10</span> <span class="operator">|</span>                   <span class="number">12</span> <span class="operator">|</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;update demo.t4 set b = 100 where a=4&quot;</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.t4_agg_stream;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           c <span class="operator">|</span>                    d <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>                    <span class="number">1</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span>                    <span class="number">2</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                    <span class="number">3</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">4</span> <span class="operator">|</span>                    <span class="number">4</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">5</span> <span class="operator">|</span>                    <span class="number">5</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">4</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">5</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>          <span class="number">10</span> <span class="operator">|</span>                   <span class="number">12</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>         <span class="number">100</span> <span class="operator">|</span>                    <span class="number">4</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>          <span class="number">10</span> <span class="operator">|</span>                    <span class="number">8</span> <span class="operator">|</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="Example5-Consistency-Inner-Join-amp-Aggregation-Materialized-View"><a href="#Example5-Consistency-Inner-Join-amp-Aggregation-Materialized-View" class="headerlink" title="Example5: Consistency Inner Join &amp; Aggregation Materialized View"></a>Example5: Consistency Inner Join &amp; Aggregation Materialized View</h2><p>join &amp; aggregation</p>
+<ul>
+<li><code>example5/tidb.sql</code></li>
+<li><code>example5/flink.sql.template</code></li>
+<li>create <code>build</code> table（<code>INSERT ONLY</code>） and <code>prob</code> table</li>
+<li>use flink to maintain materialized view about <code>select agg(...) from build inner join prob on ... group by ...</code><ul>
+<li>add filed <code>proctime as PROCTIME()</code> to the schema of <code>prob</code> table</li>
+<li><code>prob inner join ... FOR SYSTEM_TIME AS OF prob.proctime as build on prob.b = build.b ...)</code>: make <code>prob</code> table always use the latest <code>build</code> table by jdbc connector.</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">mysql -h 0.0.0.0 -P 12355 -u root &lt; example5/tidb.sql</span><br><span class="line"></span><br><span class="line">./setup-demo.py --cmd sink_task --sink_task_desc=<span class="string">&quot;etl5.5.demo.t5&quot;</span> --sink_task_flink_schema_path ./example5/fli</span><br><span class="line">nk.sql.template </span><br></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br></pre></td><td class="code"><pre><span class="line">.<span class="operator">/</span>run<span class="operator">-</span>flink<span class="operator">-</span>bash.sh</span><br><span class="line"><span class="operator">/</span>pingcap<span class="operator">/</span>demo<span class="operator">/</span>flink<span class="operator">-</span><span class="keyword">sql</span><span class="operator">-</span>client.sh</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">create</span> database demo_hudi;</span><br><span class="line">[INFO] <span class="keyword">Execute</span> statement succeed.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">SET</span> <span class="keyword">sql</span><span class="operator">-</span>client.execution.result<span class="operator">-</span>mode<span class="operator">=</span>TABLEAU;</span><br><span class="line">[INFO] Session property has been set.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">CREATE</span> <span class="keyword">TABLE</span> demo_hudi.test(</span><br><span class="line"><span class="operator">&gt;</span> b <span class="type">INT</span> <span class="keyword">PRIMARY</span> KEY <span class="keyword">NOT</span> ENFORCED,</span><br><span class="line"><span class="operator">&gt;</span> v <span class="type">BIGINT</span></span><br><span class="line"><span class="operator">&gt;</span> ) <span class="keyword">WITH</span> (</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;connector&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hudi&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;path&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;hdfs://namenode:8020/pingcap/demo/etl5-sink-5/join&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;table.type&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;MERGE_ON_READ&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;read.streaming.enabled&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;true&#x27;</span>,</span><br><span class="line"><span class="operator">&gt;</span> <span class="string">&#x27;read.streaming.check-interval&#x27;</span> <span class="operator">=</span> <span class="string">&#x27;1&#x27;</span></span><br><span class="line"><span class="operator">&gt;</span> );</span><br><span class="line">[INFO] <span class="keyword">Execute</span> statement succeed.</span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.test;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           b <span class="operator">|</span>                    v <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>                   <span class="number">-1</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span>                   <span class="number">-4</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                   <span class="number">-3</span> <span class="operator">|</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;insert into demo.t5 values (5,3)&quot;</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.test;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           b <span class="operator">|</span>                    v <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>                   <span class="number">-1</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span>                   <span class="number">-4</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                   <span class="number">-3</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                   <span class="number">-6</span> <span class="operator">|</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;delete from demo.t5 where a=1&quot;</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.test;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           b <span class="operator">|</span>                    v <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>                   <span class="number">-1</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span>                   <span class="number">-4</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                   <span class="number">-3</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                   <span class="number">-6</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;update demo.t5_build set c=100&quot;</span></span><br><span class="line"><span class="comment">-- no change</span></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.test;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           b <span class="operator">|</span>                    v <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>                   <span class="number">-1</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span>                   <span class="number">-4</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                   <span class="number">-3</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                   <span class="number">-6</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;insert into demo.t5 values (6,1)&quot;</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.test;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           b <span class="operator">|</span>                    v <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>                   <span class="number">-1</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span>                   <span class="number">-4</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                   <span class="number">-3</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                   <span class="number">-6</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>                  <span class="number">100</span> <span class="operator">|</span></span><br><span class="line"></span><br><span class="line"><span class="comment">-- after &quot;insert into demo.t5 values (7,3)&quot;</span></span><br><span class="line"><span class="comment">-- add 100 to -6 --&gt; 94</span></span><br><span class="line"></span><br><span class="line">Flink <span class="keyword">SQL</span><span class="operator">&gt;</span> <span class="keyword">select</span> <span class="operator">*</span> <span class="keyword">from</span> demo_hudi.test;</span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> op <span class="operator">|</span>           b <span class="operator">|</span>                    v <span class="operator">|</span></span><br><span class="line"><span class="operator">+</span><span class="comment">----+-------------+----------------------+</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>                   <span class="number">-1</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">2</span> <span class="operator">|</span>                   <span class="number">-4</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                   <span class="number">-3</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                   <span class="number">-6</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">-</span>D <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>               (<span class="keyword">NULL</span>) <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">1</span> <span class="operator">|</span>                  <span class="number">100</span> <span class="operator">|</span></span><br><span class="line"><span class="operator">|</span> <span class="operator">+</span>I <span class="operator">|</span>           <span class="number">3</span> <span class="operator">|</span>                   <span class="number">94</span> <span class="operator">|</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="Integration-Test"><a href="#Integration-Test" class="headerlink" title="Integration Test"></a>Integration Test</h2><p>Process</p>
+<ul>
+<li>create a table and start to update it continuously</li>
+<li>wait for a few seconds and create the etl task to sink the table data into hudi</li>
+<li>check data consistency between tidb and hudi</li>
+</ul>
+<blockquote>
+<p>Incremental Consistency Test</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./test-consistency.py</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>Incremental Aggregation Consistency Test</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./test-consistency-agg.py</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>Incremental Inner Join Aggregation Consistency Test</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./test-consistency-join.py</span><br></pre></td></tr></table></figure>
+
+<h2 id="Further-Implementation"><a href="#Further-Implementation" class="headerlink" title="Further Implementation"></a>Further Implementation</h2><p>TiCDC 数据输入 <code>exactly-once</code> 一致性：</p>
+<ul>
+<li>目前 TiCDC 提供了 <code>at-least-once</code> 一致性级别的数据源输入；</li>
+<li>下游算子需根据 <a target="_blank" rel="noopener" href="https://docs.pingcap.com/tidb/dev/ticdc-canal-json#watermark-event">WATERMARK Event</a> 将 <code>watermarkTs</code> 纳入状态机，并过滤重复数据，以此来实现 <code>exactly-once</code> 级别一致性；</li>
+</ul>
+<p>目前 Demo 应用依赖外部组件：Flink，Kafka（Zookeeper），Hudi（Hadoop 相关各组件）。需要优化整体架构：</p>
+<ul>
+<li>Flink 作为一个通用且成熟的流处理平台，外部依赖以及内部运行机制均较为繁重，产品化时需舍弃 Flink<ul>
+<li>Java 系产品与其他语言亲和度较弱，不利于当前的 TiDB 社区生态</li>
+<li>需要人力去维护和排查 Flink 自身可能带来的问题</li>
+<li>TiSpark 之类项目前车之鉴，非与 TiDB 体系紧密耦合的项目终陷入死局</li>
+</ul>
+</li>
+<li>Hudi 依赖 Hadoop 和 Spark 生态体系，产品化时是否需要令外部感知到？是否需要舍弃 Hudi 而是用 TiDB 生态内部的存储系统？</li>
+<li>TiDB 体系可结合自身需求，实现轻量级的流式处理框架：<ul>
+<li>参考 Flink 的 <a href="#Flink-Checkpointing">Checkpointing</a> 机制实现分布式容错<ul>
+<li>类似 Flink 流式状态存储和管理体系，可由 TiKV 提供的分布式 KV 存储和事务体系实现</li>
+</ul>
+</li>
+<li>参考 Flink 实现端到端 <a href="#Flink-Consistency">exactly-once</a> 一致性</li>
+<li>构建维护 <a href="#Flink-Incremental-Materialized-View">增量物化视图</a> 的基本原理与上文类似</li>
+<li>存量数据和增量数据可以直接在物化视图中分别处理再合并，保证最终结果<a href="#Consistency">线性一致</a></li>
+</ul>
+</li>
+<li>实现轻量级的数据同步流程，去掉对于 Kafka 的依赖<ul>
+<li>类 cdc 模块将增量数据持续写入到外部可信任的存储系统中，由使用方控制消费过程</li>
+<li>其他可考虑的方案：侵入式改造 TiDB 的事务模型，按需将 MV 相关的数据和事件纳入到完整的事务流程中，去掉对于 TiCDC，Kafka，Flink 等外部组件的依赖</li>
+</ul>
+</li>
+</ul>
+<p>IMV 一致性</p>
+<ul>
+<li>增量方式维护状态机的关键步骤是感知新旧数据的变化，对于 TiDB 这类满足全局线性一致性事务的系统而言，就是不同 timestamp 下的数据差异</li>
+<li>resolved-ts 或者 ticdc 提供的 watermark-ts 可以很自然地作为推进 checkpoint 的 barrier</li>
+<li>处理多表或者单表多分区数据时，可以对齐 barrier，并对同个 checkpoint 内的增量数据按照 commit-ts 排序后依次处理<ul>
+<li>处理多表 JOIN 时，任一表的改动均需要找出与之关联的其他表数据，并还原出 JOIN 前后的数据变化<ul>
+<li>例如 <code>t1 inner join t2 on t1.a = t2.a</code>，t1 在 <code>ts</code> 时刻字段 a 发生改动从 <code>a1</code> 变成 <code>a2</code>。则需要找出 t2 在 <code>ts-1</code> 时刻字段 a 为 <code>a1</code> 的所有数据 <code>p1</code>，执行 <code>a1</code> JOIN <code>p1</code> 操作后得到结果集 <code>j1</code>；找出 t2 在 <code>ts</code> 时刻字段 a 为 <code>a2</code> 的所有数据 <code>p2</code>，执行 <code>a2</code> JOIN <code>p2</code> 操作后得到结果集 <code>j2</code>；<code>j1</code> 和 <code>j2</code> 之间的数据差异才能用于维护增量状态机；</li>
+</ul>
+</li>
+<li>TiDB 体系下可以推迟 GC，然后从原始数据按照 timestamp 回表查询。当回原表造成的开销不大时，这种方式较为简单有效。必要时可以在原表上建索引来优化。</li>
+<li>如果不读原表，则需要将表同步到外部系统，该系统需要兼容 TiDB 的事务体系，并支持按照 timestamp 读取。<ul>
+<li>对于小表则可直接在内存中维护</li>
+<li>可通过建索引或重新分区等方式优化</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/PingCAP/" rel="tag"># PingCAP</a>
+              <a href="/tags/Database/" rel="tag"># Database</a>
+              <a href="/tags/HTAP/" rel="tag"># HTAP</a>
+              <a href="/tags/TiDB/" rel="tag"># TiDB</a>
+              <a href="/tags/Materialized-View/" rel="tag"># Materialized View</a>
+              <a href="/tags/Hudi/" rel="tag"># Hudi</a>
+              <a href="/tags/Flink/" rel="tag"># Flink</a>
+              <a href="/tags/Kafka/" rel="tag"># Kafka</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2022/11/26/pingcap/database-collation-optimization/" rel="prev" title="Database Collation Optimization In TiDB | TiFlash">
+                  <i class="fa fa-chevron-left"></i> Database Collation Optimization In TiDB | TiFlash
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Zhigao Tong</span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="/lib/animejs/lib/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/schemes/muse.js"></script><script src="/js/next-boot.js"></script>
+
+  
+<script src="/lib/hexo-generator-searchdb/dist/search.js" integrity="sha256-vXZMYLEqsROAXkEw93GGIvaB2ab+QW6w3+1ahD9nXXA=" crossorigin="anonymous"></script>
+<script src="/js/third-party/search/local-search.js"></script>
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>
