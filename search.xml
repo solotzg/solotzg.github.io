@@ -5133,7 +5133,7 @@
 </li>
 <li>实现轻量级的数据同步流程，去掉对于 Kafka 的依赖<ul>
 <li>类 cdc 模块将增量数据持续写入到外部可信任的存储系统中，由使用方控制消费过程（<a href="https://docs.pingcap.com/tidb/stable/ticdc-sink-to-cloud-storage">同步数据到存储服务</a>）<ul>
-<li>ticdc 中 <a href="https://docs.pingcap.com/zh/tidb/stable/ticdc-canal-json">Canal-JSON</a> 和 <a href="https://docs.pingcap.com/tidb/stable/ticdc-csv">CSV</a> 两种协议支持当开启 <a href="https://docs.pingcap.com/tidb/stable/ticdc-manage-changefeed#output-the-historical-value-of-a-row-changed-event">Old Value</a> 功能时 (<code>enable-old-value = true</code>)，输出更新事件的旧值。</li>
+<li>ticdc 中 <a href="https://docs.pingcap.com/tidb/stable/ticdc-canal-json">Canal-JSON</a> 和 <a href="https://docs.pingcap.com/tidb/stable/ticdc-open-protocol">Open Protocol</a> 两种协议支持当开启 <a href="https://docs.pingcap.com/tidb/stable/ticdc-manage-changefeed#output-the-historical-value-of-a-row-changed-event">Old Value</a> 功能时 (<code>enable-old-value = true</code>)，输出更新事件的旧值。</li>
 </ul>
 </li>
 <li>其他可考虑的方案：侵入式改造 TiDB 的事务模型，按需将 MV 相关的数据和事件纳入到完整的事务流程中，去掉对于 TiCDC，Kafka，Flink 等外部组件的依赖</li>
@@ -5161,7 +5161,10 @@
 <p>数据存储</p>
 <ul>
 <li>为了便于兼容云原生架构，需要用兼容云上存储体系的存储系统替换 Hadoop HDFS<ul>
-<li><a href="https://github.com/minio/minio">MinIO</a>（基于 AGPL-3.0 协议）是一个轻量级的高性能对象存储系统，兼容 Amazon S3 API。</li>
+<li><a href="https://github.com/minio/minio">MinIO</a> 是一个轻量级的高性能对象存储系统，兼容 Amazon S3 API<ul>
+<li><a href="https://github.com/minio/minio/tree/RELEASE.2021-05-11T23-27-41Z">RELEASE.2021-05-11T23-27-41Z</a> 开始使用 AGPL-3.0 协议，小于等于 <a href="https://github.com/minio/minio/tree/RELEASE.2021-04-22T15-44-28Z">RELEASE.2021-04-22T15-44-28Z</a> 版本使用 Apache-2.0 协议</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
