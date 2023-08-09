@@ -4841,6 +4841,17 @@
 </ul>
 <p><code>Interval Join</code> 和 <code>Window Join</code> 属于比较典型的流式计算场景下的功能，需要外部约束来保证数据一致性。</p>
 <h3 id="Storage"><a href="#Storage" class="headerlink" title="Storage"></a>Storage</h3><p>Hudi 作为下一代数据湖产品，加强了对于数据更新的支持。其不仅兼容 Hadoop 系的数仓生态，而且与 Flink 的衔接也较为完善。文中以 Hudi 和 HDFS 作为 MV 相关的数据存储系统。</p>
+<p><a href="https://hudi.apache.org/docs/0.12.3/flink_configuration">Flink 相关参数</a></p>
+<ul>
+<li><code>write.tasks</code>：写任务的并行度</li>
+<li><code>write.bucket_assign.tasks</code>：当 <code>index.type</code> 为 <code>FLINK_STATE</code> 时，覆盖 <code>write.tasks</code></li>
+</ul>
+<p><a href="https://hudi.apache.org/docs/0.12.3/hoodie_deltastreamer#bucket-index">Bucket Index</a>: Flink 默认使用状态后端来存储文件索引（<code>primary key -&gt; fileId</code>）。当输入数据量较大时，状态相关的开销容易成为性能瓶颈。<code>BUCKET</code> 的方式通过确定性 hash 算法来讲数据映射到 buckets 中，从而避免了建立索引过程中的存储&#x2F;查询相关的开销。</p>
+<ul>
+<li><code>index.type</code>：<code>FLINK_STATE</code>(default), <code>BUCKET</code></li>
+<li><code>hoodie.bucket.index.hash.field</code></li>
+<li><code>hoodie.bucket.index.num.buckets</code></li>
+</ul>
 <h3 id="Consistency"><a href="#Consistency" class="headerlink" title="Consistency"></a>Consistency</h3><p>TiCDC 是一款 TiDB 增量数据同步工具，通过拉取上游 TiKV 的数据变更日志，TiCDC 可以将数据解析为有序的行级变更数据输出到下游。</p>
 <ul>
 <li>借助 Kafka 实现存量数据和增量数据的线性一致。该方式会引入额外的数据同步开销，实际场景中则可以通过存量数据构建 MV Base 部分，利用增量数据构建 MV Delta 部分。详见 <a href="#Example3-Consistency">Example3</a>，<a href="#Example4-Consistency-Aggregation-Materialized-View">Example4</a>，<a href="#Example5-Consistency-Inner-Join-amp-Aggregation-Materialized-View">Example5</a><ul>
@@ -4868,8 +4879,8 @@
 <p>本文中给出的 Join 实现较为简单，仅令维度表写入模式为 <code>Insert Only</code>，数据关联时则令下游直接回溯上游 TiDB 原始数据。</p>
 <h2 id="Usage"><a href="#Usage" class="headerlink" title="Usage"></a>Usage</h2><h3 id="ENV"><a href="#ENV" class="headerlink" title="ENV"></a>ENV</h3><p>install basic components</p>
 <ul>
-<li>install <code>mysql</code>, <code>python3</code>, <code>git</code>, <code>java-1.8.0-openjdk</code>, <code>maven</code>, <code>docker</code></li>
-<li><code>pip3 install requests mysql-connector-python</code></li>
+<li>install <code>mysql</code>, <code>python3</code>, <code>git</code>, <code>java-1.8.0-openjdk</code>, <code>maven</code>, <code>docker</code>, <code>golang</code></li>
+<li><code>pip3 install requests mysql-connector-python minio</code></li>
 <li>disable <code>firewalld</code></li>
 <li><code>sudo root</code></li>
 </ul>
@@ -4880,7 +4891,7 @@
 <ul>
 <li>set <code>JAVA_HOME</code> to jdk 1.8 like <code>/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.372.b07-2.el9.x86_64</code></li>
 </ul>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cd</span> <span class="variable">$&#123;self_demo_scripts_path&#125;</span></span><br><span class="line"><span class="built_in">mkdir</span> .tmp.env_libs</span><br><span class="line"><span class="built_in">export</span> self_demo_env_libs=<span class="variable">$&#123;self_demo_scripts_path&#125;</span>/.tmp.env_libs</span><br><span class="line">JAVA_HOME=<span class="string">&quot;xxxxxx&quot;</span> ./setup-demo.py --cmd compile_hudi --hudi_repo=<span class="variable">$&#123;self_deploy_path&#125;</span>/hudi</span><br><span class="line"><span class="built_in">cp</span> <span class="variable">$&#123;self_deploy_path&#125;</span>/hudi/packaging/hudi-flink-bundle/target/hudi-flink1.13-bundle-0.12.3.jar <span class="variable">$&#123;self_demo_env_libs&#125;</span></span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cd</span> <span class="variable">$&#123;self_demo_scripts_path&#125;</span></span><br><span class="line"><span class="built_in">mkdir</span> .tmp.env_libs</span><br><span class="line"><span class="built_in">export</span> self_demo_env_libs=<span class="variable">$&#123;self_demo_scripts_path&#125;</span>/.tmp.env_libs</span><br><span class="line">JAVA_HOME=<span class="string">&quot;xxxxxx&quot;</span> ./setup-demo.py --cmd compile_hudi --hudi_repo=<span class="variable">$&#123;self_deploy_path&#125;</span>/hudi</span><br><span class="line"><span class="built_in">cp</span> <span class="variable">$&#123;self_deploy_path&#125;</span>/hudi/packaging/hudi-flink-bundle/target/hudi-flink1.13-bundle-0.12.3.jar <span class="variable">$&#123;self_demo_env_libs&#125;</span></span><br><span class="line"></span><br><span class="line">curl https://repo.maven.apache.org/maven2/com/amazonaws/aws-java-sdk/1.10.34/aws-java-sdk-1.10.34.jar -o <span class="variable">$&#123;self_demo_env_libs&#125;</span>/aws-java-sdk-1.10.34.jar</span><br><span class="line">curl https://repo.maven.apache.org/maven2/org/apache/hadoop/hadoop-aws/2.7.3/hadoop-aws-2.7.3.jar -o <span class="variable">$&#123;self_demo_env_libs&#125;</span>/hadoop-aws-2.7.3.jar</span><br></pre></td></tr></table></figure>
 
 <p>prepare flink</p>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">flink_repo_path=<span class="variable">$&#123;self_deploy_path&#125;</span>/flink</span><br><span class="line"><span class="built_in">cd</span> <span class="variable">$&#123;flink_repo_path&#125;</span>/flink-connectors/flink-sql-connector-kafka</span><br><span class="line">mvn clean package -DskipTests -Drat.skip=<span class="literal">true</span></span><br><span class="line"><span class="built_in">cp</span> <span class="variable">$&#123;flink_repo_path&#125;</span>/flink-connectors/flink-sql-connector-kafka/target/flink-sql-connector-kafka_2.11-1.13.6.jar <span class="variable">$&#123;self_demo_env_libs&#125;</span></span><br><span class="line"><span class="built_in">cd</span> <span class="variable">$&#123;flink_repo_path&#125;</span>/flink-connectors/flink-connector-jdbc</span><br><span class="line">mvn clean package -DskipTests -Drat.skip=<span class="literal">true</span></span><br><span class="line"><span class="built_in">cp</span> <span class="variable">$&#123;flink_repo_path&#125;</span>/flink-connectors/flink-connector-jdbc/target/flink-connector-jdbc_2.11-1.13.6.jar <span class="variable">$&#123;self_demo_env_libs&#125;</span></span><br></pre></td></tr></table></figure>
@@ -5087,10 +5098,19 @@
 </blockquote>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">./test-consistency-join.py</span><br></pre></td></tr></table></figure>
 
-<h2 id="Further-Implementation"><a href="#Further-Implementation" class="headerlink" title="Further Implementation"></a>Further Implementation</h2><p>TiCDC 数据输入 <code>exactly-once</code> 一致性：</p>
+<h2 id="Further-Implementation"><a href="#Further-Implementation" class="headerlink" title="Further Implementation"></a>Further Implementation</h2><p>数据源 <code>exactly-once</code> 一致性：</p>
 <ul>
-<li>目前 TiCDC 提供了 <code>at-least-once</code> 一致性级别的数据源输入；</li>
-<li>下游算子需根据 <a href="https://docs.pingcap.com/tidb/dev/ticdc-canal-json#watermark-event">WATERMARK Event</a> 将 <code>watermarkTs</code> 纳入状态机，并过滤重复数据，以此来实现 <code>exactly-once</code> 级别一致性；</li>
+<li>目前 TiCDC 仅提供 <code>at-least-once</code> 级别的数据源输入，以下 2 种典型场景需建立额外的机制来提供 <code>exactly-once</code> 语义：<ul>
+<li><a href="https://docs.pingcap.com/tidb/stable/ticdc-sink-to-kafka">同步数据至 Kafka</a>：开启 <code>enable-tidb-extension</code>，下游算子将 <a href="https://docs.pingcap.com/tidb/dev/ticdc-canal-json#watermark-event">TIDB_WATERMARK::watermarkTs</a> 纳入数据源状态，过滤重复数据。<ul>
+<li>涉及到多数据流 Join 场景，需要参照 watermarkTs 构建 barrier 并对齐。</li>
+</ul>
+</li>
+<li><a href="https://docs.pingcap.com/tidb/stable/ticdc-sink-to-cloud-storage">同步数据至外部存储</a>：开启 <code>enable-tidb-extension</code>，下游将 <a href="https://docs.pingcap.com/tidb/stable/ticdc-sink-to-cloud-storage#metadata">metadata&#x2F;checkpoint-ts</a> 纳入数据源状态，过滤重复数据。<ul>
+<li>涉及到多表关联的场景，建议把相关的表配置在同个 ticdc 同步任务中以便于共享 metadata，需根据 checkpoint-ts 构建 barrier 并对齐。</li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 <p>目前 Demo 应用依赖外部组件：Flink，Kafka（Zookeeper），Hudi（Hadoop 相关各组件）。需要优化整体架构：</p>
 <ul>
@@ -5112,7 +5132,10 @@
 </ul>
 </li>
 <li>实现轻量级的数据同步流程，去掉对于 Kafka 的依赖<ul>
-<li>类 cdc 模块将增量数据持续写入到外部可信任的存储系统中，由使用方控制消费过程</li>
+<li>类 cdc 模块将增量数据持续写入到外部可信任的存储系统中，由使用方控制消费过程（<a href="https://docs.pingcap.com/tidb/stable/ticdc-sink-to-cloud-storage">同步数据到存储服务</a>）<ul>
+<li>ticdc 中 <a href="https://docs.pingcap.com/zh/tidb/stable/ticdc-canal-json">Canal-JSON</a> 和 <a href="https://docs.pingcap.com/tidb/stable/ticdc-csv">CSV</a> 两种协议支持当开启 <a href="https://docs.pingcap.com/tidb/stable/ticdc-manage-changefeed#output-the-historical-value-of-a-row-changed-event">Old Value</a> 功能时 (<code>enable-old-value = true</code>)，输出更新事件的旧值。</li>
+</ul>
+</li>
 <li>其他可考虑的方案：侵入式改造 TiDB 的事务模型，按需将 MV 相关的数据和事件纳入到完整的事务流程中，去掉对于 TiCDC，Kafka，Flink 等外部组件的依赖</li>
 </ul>
 </li>
@@ -5132,6 +5155,13 @@
 <li>可通过建索引或重新分区等方式优化</li>
 </ul>
 </li>
+</ul>
+</li>
+</ul>
+<p>数据存储</p>
+<ul>
+<li>为了便于兼容云原生架构，需要用兼容云上存储体系的存储系统替换 Hadoop HDFS<ul>
+<li><a href="https://github.com/minio/minio">MinIO</a>（基于 AGPL-3.0 协议）是一个轻量级的高性能对象存储系统，兼容 Amazon S3 API。</li>
 </ul>
 </li>
 </ul>
