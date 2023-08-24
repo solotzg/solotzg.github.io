@@ -158,9 +158,6 @@
     <content><![CDATA[<p><code>Release Notes</code> 作为开源软件工程实践的重要一环，会很大程度上影响用户体验和交付流程。此篇文档是本人在历次发版任务中总结出来的模板规范，用以帮助产研提升 Release Notes 质量。该规范已由组内推广至 PingCAP 全公司。</p>
 <span id="more"></span>
 
-<blockquote>
-<p>Proposed by <code>Zhigao Tong</code></p>
-</blockquote>
 <h2 id="相关文档"><a href="#相关文档" class="headerlink" title="相关文档"></a>相关文档</h2><ul>
 <li>Release Notes 填写规范</li>
 <li>Release Notes 描述规范</li>
@@ -422,7 +419,7 @@
     <url>/2022/04/01/ProjectManagement/tiflash-open-source/</url>
     <content><![CDATA[<p><a href="https://github.com/pingcap/tiflash">TiFlash</a> 于 <code>2022-04-01 GMT+8 10:35</code> 愚人节 正式官宣开源。</p>
 <p>这是加入 PingCAP（aka 贵司）后首次尝试从提出规划到推进落地项目开源，算是值得纪念的事件 <a href="https://github.com/pingcap/tiflash/pull/4551">Celebrate open-source (#4551)</a>，在此存档相关历程。</p>
-<span id="more"></span> 
+<span id="more"></span>
 <h2 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h2><p>TiFlash 项目开源，既是秉承和发扬公司开源精神，也能提振客户信心，扩大影响力。但随之而来的问题也很明显：</p>
 <ul>
 <li><strong>安全</strong>：不同于闭源项目，源码公布之后所有的实现细节均显露无疑，任何漏洞都将暴露在阳光下，安全问题是重中之重。以下几点需特别注意：<ul>
@@ -442,10 +439,7 @@
 </li>
 <li><strong>开源社区</strong>：虽然贵司有诸多开源网红产品，但对于 TiFlash 这类偏专项领域的项目是否有必要做社区？如何吸引外部 Contributor？如何沟通？如何扩大影响力？就看后人的智慧了 Orz…</li>
 </ul>
-<h2 id="TiFlash-开源准备事项"><a href="#TiFlash-开源准备事项" class="headerlink" title="TiFlash 开源准备事项"></a>TiFlash 开源准备事项</h2><blockquote>
-<p>Proposed by <code>Zhigao Tong</code></p>
-</blockquote>
-<h3 id="进度记录"><a href="#进度记录" class="headerlink" title="进度记录"></a>进度记录</h3><ul>
+<h2 id="TiFlash-开源准备事项"><a href="#TiFlash-开源准备事项" class="headerlink" title="TiFlash 开源准备事项"></a>TiFlash 开源准备事项</h2><h3 id="进度记录"><a href="#进度记录" class="headerlink" title="进度记录"></a>进度记录</h3><ul>
 <li>2022-04-01<ul>
 <li>[DONE] TiFlash 正式开源</li>
 </ul>
@@ -588,7 +582,7 @@
 <li>PR reviewer 人数增加到 2，开源前打开</li>
 </ul>
 </li>
-<li>Developer Certificate 检查 </li>
+<li>Developer Certificate 检查</li>
 <li>PR &amp; Issue template</li>
 <li>Bug closed checker<ul>
 <li>流程待开源后开启</li>
