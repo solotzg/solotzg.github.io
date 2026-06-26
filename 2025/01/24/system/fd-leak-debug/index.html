@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.1.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="/lib/@fortawesome/fontawesome-free/css/all.min.css" integrity="sha256-DfWjNxDkM94fVBWx1H5BMMp0Zq7luBlV8QRcSES7s+0=" crossorigin="anonymous">
+  <link rel="stylesheet" href="/lib/animate.css/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"solotzg.github.io","root":"/","images":"/images","scheme":"Mist","darkmode":false,"version":"8.11.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"manual","top_n_per_article":5,"unescape":false,"preload":false}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="记录一次纯黑盒的 fd 泄漏问题排查过程。该问题发生在云上 GCP 环境，无法在本地或可控测试环境稳定复现，只能通过系统观测、tcpdump、对照实验等方式逐步收敛问题范围，最终定位到高置信触发链路并通过参数绕过止血。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="记一次 FD 泄漏问题黑盒排查">
+<meta property="og:url" content="https://solotzg.github.io/2025/01/24/system/fd-leak-debug/index.html">
+<meta property="og:site_name" content="SOLOTZG">
+<meta property="og:description" content="记录一次纯黑盒的 fd 泄漏问题排查过程。该问题发生在云上 GCP 环境，无法在本地或可控测试环境稳定复现，只能通过系统观测、tcpdump、对照实验等方式逐步收敛问题范围，最终定位到高置信触发链路并通过参数绕过止血。">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2025-01-24T02:40:00.000Z">
+<meta property="article:modified_time" content="2026-06-26T13:43:04.808Z">
+<meta property="article:author" content="TONG, Zhigao">
+<meta property="article:tag" content="Exception">
+<meta property="article:tag" content="Debug">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://solotzg.github.io/2025/01/24/system/fd-leak-debug/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://solotzg.github.io/2025/01/24/system/fd-leak-debug/","path":"2025/01/24/system/fd-leak-debug/","title":"记一次 FD 泄漏问题黑盒排查"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>记一次 FD 泄漏问题黑盒排查 | SOLOTZG</title>
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">SOLOTZG</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close" role="button">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#1-%E7%BB%93%E8%AE%BA%E6%91%98%E8%A6%81"><span class="nav-number">1.</span> <span class="nav-text">1. 结论摘要</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#2-%E5%BD%B1%E5%93%8D%E8%8C%83%E5%9B%B4"><span class="nav-number">2.</span> <span class="nav-text">2. 影响范围</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#3-%E6%8E%92%E6%9F%A5%E6%96%B9%E6%B3%95%E8%AF%B4%E6%98%8E"><span class="nav-number">3.</span> <span class="nav-text">3. 排查方法说明</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#3-1-%E8%AF%81%E6%8D%AE%E5%BC%BA%E5%BA%A6%E5%88%86%E7%BA%A7"><span class="nav-number">3.1.</span> <span class="nav-text">3.1 证据强度分级</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-2-%E5%85%B3%E9%94%AE%E5%AE%9E%E9%AA%8C%E6%91%98%E8%A6%81"><span class="nav-number">3.2.</span> <span class="nav-text">3.2 关键实验摘要</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#4-%E6%8E%92%E6%9F%A5%E8%BF%87%E7%A8%8B"><span class="nav-number">4.</span> <span class="nav-text">4. 排查过程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#4-1-%E7%A1%AE%E8%AE%A4%E6%95%85%E9%9A%9C%E7%8E%B0%E8%B1%A1"><span class="nav-number">4.1.</span> <span class="nav-text">4.1 确认故障现象</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-2-%E6%A3%80%E6%9F%A5%E7%B3%BB%E7%BB%9F-fd-%E9%99%90%E5%88%B6"><span class="nav-number">4.2.</span> <span class="nav-text">4.2 检查系统 fd 限制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-3-%E7%BB%9F%E8%AE%A1-TiFlash-%E8%BF%9B%E7%A8%8B-fd-%E7%B1%BB%E5%9E%8B"><span class="nav-number">4.3.</span> <span class="nav-text">4.3 统计 TiFlash 进程 fd 类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-4-%E9%AA%8C%E8%AF%81%E9%97%AE%E9%A2%98%E6%98%AF%E5%90%A6%E4%B8%8E-MPP-%E6%9F%A5%E8%AF%A2%E7%9B%B8%E5%85%B3"><span class="nav-number">4.4.</span> <span class="nav-text">4.4 验证问题是否与 MPP 查询相关</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-5-%E6%8E%92%E6%9F%A5-TiFlash-%E8%BF%9E%E6%8E%A5%E5%B7%B2%E7%BC%A9%E5%AE%B9-TiKV-%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="nav-number">4.5.</span> <span class="nav-text">4.5 排查 TiFlash 连接已缩容 TiKV 的影响</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-6-%E6%8E%92%E6%9F%A5-TiFlash-%E8%AE%BF%E9%97%AE-TiDB-status-%E7%AB%AF%E5%8F%A3%E7%9A%84%E5%BD%B1%E5%93%8D"><span class="nav-number">4.6.</span> <span class="nav-text">4.6 排查 TiFlash 访问 TiDB status 端口的影响</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-7-%E5%AE%9A%E4%BD%8D-MPP-%E5%87%86%E5%A4%87%E9%98%B6%E6%AE%B5%E7%9A%84-ServerInfo-gRPC-%E8%B0%83%E7%94%A8"><span class="nav-number">4.7.</span> <span class="nav-text">4.7 定位 MPP 准备阶段的 ServerInfo gRPC 调用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-8-%E5%88%86%E6%9E%90%E5%BC%82%E5%B8%B8%E8%BF%9E%E6%8E%A5%E5%85%B3%E9%97%AD%E8%B7%AF%E5%BE%84"><span class="nav-number">4.8.</span> <span class="nav-text">4.8 分析异常连接关闭路径</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-9-%E6%9E%84%E9%80%A0%E7%9B%B8%E5%90%8C-TCP-%E4%BA%A4%E4%BA%92%E6%A8%A1%E5%BC%8F%E8%BF%9B%E8%A1%8C%E9%AA%8C%E8%AF%81"><span class="nav-number">4.9.</span> <span class="nav-text">4.9 构造相同 TCP 交互模式进行验证</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#4-10-%E9%AA%8C%E8%AF%81-workaround"><span class="nav-number">4.10.</span> <span class="nav-text">4.10 验证 workaround</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#5-%E5%90%8E%E7%BB%AD%E9%AA%8C%E8%AF%81%E9%A1%B9"><span class="nav-number">5.</span> <span class="nav-text">5. 后续验证项</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="TONG, Zhigao"
+      src="/images/avatar.gif">
+  <p class="site-author-name" itemprop="name">TONG, Zhigao</p>
+  <div class="site-description" itemprop="description">Blogs</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">11</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">33</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author site-overview-item animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/solotzg" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;solotzg" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:solotzg@gmail.com" title="E-Mail → mailto:solotzg@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://solotzg.github.io/2025/01/24/system/fd-leak-debug/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="TONG, Zhigao">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="SOLOTZG">
+      <meta itemprop="description" content="Blogs">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="记一次 FD 泄漏问题黑盒排查 | SOLOTZG">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          记一次 FD 泄漏问题黑盒排查
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+
+      <time title="Created: 2025-01-24 10:40:00" itemprop="dateCreated datePublished" datetime="2025-01-24T10:40:00+08:00">2025-01-24</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">Edited on</span>
+      <time title="Modified: 2026-06-26 21:43:04" itemprop="dateModified" datetime="2026-06-26T21:43:04+08:00">2026-06-26</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/System/" itemprop="url" rel="index"><span itemprop="name">System</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>记录一次纯黑盒的 fd 泄漏问题排查过程。该问题发生在云上 GCP 环境，无法在本地或可控测试环境稳定复现，只能通过系统观测、tcpdump、对照实验等方式逐步收敛问题范围，最终定位到高置信触发链路并通过参数绕过止血。</p>
+<span id="more"></span>
+<h2 id="1-结论摘要"><a href="#1-结论摘要" class="headerlink" title="1. 结论摘要"></a>1. 结论摘要</h2><p><a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash/issues/9663">TiFlash</a> 在 Cloud GCP 环境中出现 fd 持续增长，最终触发 <code>Too many open files</code> 并导致进程 panic。现场确认泄漏 fd 主要由 socket、eventfd、eventpoll 构成，三类对象数量接近。</p>
+<p>当前最高置信的触发 &#x2F; 放大链路为：TiDB planner 在准备部分 MPP 查询时，会获取 TiFlash 节点硬件信息，并触发 TiDB -&gt; TiFlash <code>ServerInfo</code> gRPC 调用。该调用会在 TiDB 侧创建短生命周期 gRPC 连接；现场观测到该链路存在频繁连接创建与关闭，且 TiFlash 进程内 fd 呈 socket、eventpoll、eventfd 成组增长。</p>
+<p>关闭 MPP 后，fd 不再增长；设置参数绕过 TiFlash 节点硬件信息获取链路后，泄漏也不再出现。因此，目前可以高置信判断：fd 泄漏与 MPP 查询准备阶段的 TiDB -&gt; TiFlash <code>ServerInfo</code> gRPC 短连接链路高度相关。</p>
+<h2 id="2-影响范围"><a href="#2-影响范围" class="headerlink" title="2. 影响范围"></a>2. 影响范围</h2><ul>
+<li>Platform：GCP（<strong>其他平台例如 AWS 未发现该问题</strong>）</li>
+<li>TiDB &#x2F; TiFlash version：<code>v7.5.3</code></li>
+<li>影响：<ul>
+<li>TiFlash fd 数持续增长</li>
+<li>查询开始失败</li>
+<li>最终触发 <code>Too many open files</code></li>
+<li>TiFlash panic &#x2F; restart</li>
+</ul>
+</li>
+</ul>
+<h2 id="3-排查方法说明"><a href="#3-排查方法说明" class="headerlink" title="3. 排查方法说明"></a>3. 排查方法说明</h2><p>本次问题排查主要基于黑盒 debug。排查过程中无法直接依赖 TiFlash &#x2F; gRPC 内部代码逻辑确认资源生命周期，因此主要通过以下外部观测和对照实验逐步收敛问题范围：</p>
+<ol>
+<li>TiFlash 进程 fd 数量变化；</li>
+<li>fd 类型分布；</li>
+<li>socket、eventfd、eventpoll 的增长关系；</li>
+<li>tcpdump 观察到的连接创建与关闭行为；</li>
+<li>设置参数绕开相关链路前后的 fd 变化对比；</li>
+<li>相关 gRPC &#x2F; TLS 连接异常日志；</li>
+<li>已知 workaround 的效果验证。</li>
+</ol>
+<p>因此，本文中的根因判断应理解为基于黑盒证据链的高置信推断，而不是基于代码路径的完全证明。</p>
+<h3 id="3-1-证据强度分级"><a href="#3-1-证据强度分级" class="headerlink" title="3.1 证据强度分级"></a>3.1 证据强度分级</h3><table>
+<thead>
+<tr>
+<th>判断</th>
+<th>证据强度</th>
+<th>依据</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>TiFlash 存在 fd 持续增长</td>
+<td>强</td>
+<td><code>/proc/1/fd</code> &#x2F; <code>lsof</code> 统计持续增长</td>
+</tr>
+<tr>
+<td>泄漏 fd 主要是 socket、eventfd、eventpoll</td>
+<td>强</td>
+<td>fd 类型统计显示三类对象成组增长</td>
+</tr>
+<tr>
+<td>泄漏与 MPP 查询链路相关</td>
+<td>强</td>
+<td>关闭 MPP 后 fd 增长停止</td>
+</tr>
+<tr>
+<td>泄漏与 <code>ServerInfo</code> 节点硬件信息获取链路相关</td>
+<td>较强</td>
+<td>绕过该链路后 fd 增长停止，且代码路径确认该链路会发起 gRPC 调用</td>
+</tr>
+<tr>
+<td><code>[RST, ACK]</code> 与 fd 增长时间相关</td>
+<td>中</td>
+<td>时间窗口相关，但构造相同 TCP 模式未稳定复现</td>
+</tr>
+<tr>
+<td>TiFlash &#x2F; gRPC 内部未释放 fd</td>
+<td>中</td>
+<td>资源形态吻合，但缺少 syscall &#x2F; 代码级证据</td>
+</tr>
+<tr>
+<td>问题与 GCP 环境存在相关性</td>
+<td>中</td>
+<td>AWS 未观察到，但缺少同 workload、同版本、同配置的系统性对照</td>
+</tr>
+</tbody></table>
+<h3 id="3-2-关键实验摘要"><a href="#3-2-关键实验摘要" class="headerlink" title="3.2 关键实验摘要"></a>3.2 关键实验摘要</h3><p>按排查顺序，关键对照实验如下：</p>
+<ol>
+<li>确认 TiFlash fd 持续增长，且增长对象主要是 socket、eventfd、eventpoll；</li>
+<li>关闭 MPP 后，TiFlash fd 增长停止；</li>
+<li>沿 MPP planner 路径定位到 TiDB -&gt; TiFlash <code>ServerInfo</code> RPC；</li>
+<li>设置参数让 planner 不再动态拉取 TiFlash logical cores 后，fd 增长停止；</li>
+<li>tcpdump 观察到部分连接关闭路径存在 <code>[RST, ACK]</code>，但单独构造类似 TCP 关闭模式未稳定复现泄漏。</li>
+</ol>
+<h2 id="4-排查过程"><a href="#4-排查过程" class="headerlink" title="4. 排查过程"></a>4. 排查过程</h2><h3 id="4-1-确认故障现象"><a href="#4-1-确认故障现象" class="headerlink" title="4.1 确认故障现象"></a>4.1 确认故障现象</h3><p>首先从 TiFlash 日志中确认故障现象。TiFlash 节点在运行过程中开始持续出现 <code>Too many open files</code> 错误，随后查询链路受影响，最终进程因为系统调用失败触发 panic。</p>
+<p>该现象说明问题不是单次查询报错，而是 TiFlash 进程内打开的 fd 数量持续增长，最终超过系统限制。</p>
+<h3 id="4-2-检查系统-fd-限制"><a href="#4-2-检查系统-fd-限制" class="headerlink" title="4.2 检查系统 fd 限制"></a>4.2 检查系统 fd 限制</h3><p>确认容器 &#x2F; 进程的 <code>ulimit</code> 配置。当前系统默认 fd 上限为 <code>1048576</code>，属于较高配置。</p>
+<p>因此，本次故障不是因为 fd 上限设置过低，而是 TiFlash 进程存在 fd 持续增长甚至泄漏的问题。</p>
+<h3 id="4-3-统计-TiFlash-进程-fd-类型"><a href="#4-3-统计-TiFlash-进程-fd-类型" class="headerlink" title="4.3 统计 TiFlash 进程 fd 类型"></a>4.3 统计 TiFlash 进程 fd 类型</h3><p>通过检查 TiFlash 进程 <code>/proc/1/fd</code>，发现 fd 数量持续增长，且主要集中在以下三类对象：</p>
+<ul>
+<li><code>socket</code></li>
+<li><code>anon_inode:[eventfd]</code></li>
+<li><code>anon_inode:[eventpoll]</code></li>
+</ul>
+<p>进一步统计发现三类 fd 数量接近，说明泄漏对象并非随机分布，而是呈现出一组一组增长的特征。</p>
+<p>该现象与 gRPC 同步服务处理连接时创建的资源形态一致：一次连接通常会关联 socket、eventfd 和 eventpoll 等对象。</p>
+<p>被泄漏的 socket、eventpoll、eventfd 呈现出对应关系：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">TiFlashMa   1 root *617u     sock                0,8       0t0 229895840 protocol: TCPv6</span><br><span class="line">TiFlashMa   1 root *618u  a_inode               0,14         0        37 [eventpoll:27617,27619]</span><br><span class="line">TiFlashMa   1 root *619u  a_inode               0,14         0        37 [eventfd:9103]</span><br><span class="line">TiFlashMa   1 root *620u     sock                0,8       0t0 229908712 protocol: TCPv6</span><br><span class="line">TiFlashMa   1 root *621u  a_inode               0,14         0        37 [eventpoll:27620,27622]</span><br><span class="line">TiFlashMa   1 root *622u  a_inode               0,14         0        37 [eventfd:9104]</span><br><span class="line">TiFlashMa   1 root *623u     sock                0,8       0t0 229912846 protocol: TCPv6</span><br><span class="line">TiFlashMa   1 root *624u  a_inode               0,14         0        37 [eventpoll:27623,27625]</span><br><span class="line">TiFlashMa   1 root *625u  a_inode               0,14         0        37 [eventfd:9105]</span><br><span class="line">TiFlashMa   1 root *626u     sock                0,8       0t0 229916482 protocol: TCPv6</span><br><span class="line">TiFlashMa   1 root *627u  a_inode               0,14         0        37 [eventpoll:27626,27628]</span><br><span class="line">TiFlashMa   1 root *628u  a_inode               0,14         0        37 [eventfd:9106]</span><br><span class="line">TiFlashMa   1 root *629u     sock                0,8       0t0 229924677 protocol: TCPv6</span><br><span class="line">TiFlashMa   1 root *630u  a_inode               0,14         0        37 [eventpoll:27629,27631]</span><br><span class="line">TiFlashMa   1 root *631u  a_inode               0,14         0        37 [eventfd:9107]</span><br></pre></td></tr></table></figure>
+
+<p>继续查看 TiFlash 进程的 fd 明细，发现泄漏的 <code>socket</code>、<code>eventpoll</code>、<code>eventfd</code> 基本呈现连续、成组出现的关系。</p>
+<p>这说明每次泄漏很可能对应一次连接生命周期中创建的一组资源，而不是 TiFlash 内部普通文件、数据文件或单独网络连接的偶发泄漏。</p>
+<p>因此，排查方向从“泛化 fd 泄漏”收敛到“网络连接相关 fd 泄漏”。</p>
+<h3 id="4-4-验证问题是否与-MPP-查询相关"><a href="#4-4-验证问题是否与-MPP-查询相关" class="headerlink" title="4.4 验证问题是否与 MPP 查询相关"></a>4.4 验证问题是否与 MPP 查询相关</h3><p>为了判断泄漏是否与 TiFlash 查询路径相关，调整 TiDB 参数关闭 MPP：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">set</span> <span class="keyword">global</span> tidb_allow_fallback_to_tikv <span class="operator">=</span> &quot;tiflash&quot;;</span><br><span class="line"><span class="keyword">set</span> <span class="keyword">global</span> tidb_allow_mpp <span class="operator">=</span> <span class="number">0</span>;</span><br><span class="line"><span class="keyword">set</span> <span class="keyword">global</span> tidb_allow_tiflash_cop <span class="operator">=</span> <span class="number">1</span>;</span><br></pre></td></tr></table></figure>
+
+<p>调整后，TiFlash socket 相关 fd 数量保持稳定，不再持续增长。</p>
+<p>在该 workload 和参数组合下，关闭 MPP 后增长停止，因此主触发链路优先指向 MPP 准备&#x2F;执行相关路径。</p>
+<h3 id="4-5-排查-TiFlash-连接已缩容-TiKV-的影响"><a href="#4-5-排查-TiFlash-连接已缩容-TiKV-的影响" class="headerlink" title="4.5 排查 TiFlash 连接已缩容 TiKV 的影响"></a>4.5 排查 TiFlash 连接已缩容 TiKV 的影响</h3><p>排查过程中发现，TiFlash 存在持续尝试连接已缩容 TiKV 地址的日志。该问题会导致大量 gRPC reconnect 日志，并可能污染排查视线。</p>
+<p>但该链路主要表现为连接失败和重复重试，并不能解释 TiFlash 进程内 socket、eventfd、eventpoll 成组持续泄漏的现象。</p>
+<p>因此，该问题被归类为独立的连接清理 &#x2F; 日志治理问题，不作为本次 fd 泄漏的主因。</p>
+<h3 id="4-6-排查-TiFlash-访问-TiDB-status-端口的影响"><a href="#4-6-排查-TiFlash-访问-TiDB-status-端口的影响" class="headerlink" title="4.6 排查 TiFlash 访问 TiDB status 端口的影响"></a>4.6 排查 TiFlash 访问 TiDB status 端口的影响</h3><p>随后排查 TiFlash 与 TiDB <code>10080</code> status 端口之间的连接。发现开启 TLS 后，TiFlash 访问 TiDB status 端口下的 gRPC 服务存在认证 &#x2F; ALPN 相关错误。</p>
+<p>该问题说明 TLS + gRPC 的连接兼容性确实存在异常，但该链路主要影响 TiFlash 上报或访问 TiDB status 服务，并不能直接解释关闭 MPP 或绕过 <code>ServerInfo</code> 节点硬件信息获取链路后 fd 泄漏停止的现象。</p>
+<p>因此，该问题被作为衍生问题单独跟进，不作为本次 fd 泄漏的主链路。</p>
+<h3 id="4-7-定位-MPP-准备阶段的-ServerInfo-gRPC-调用"><a href="#4-7-定位-MPP-准备阶段的-ServerInfo-gRPC-调用" class="headerlink" title="4.7 定位 MPP 准备阶段的 ServerInfo gRPC 调用"></a>4.7 定位 MPP 准备阶段的 ServerInfo gRPC 调用</h3><p>继续沿 MPP 查询链路排查，发现 TiDB planner 在准备 MPP 查询时，会向 TiFlash 发起 <code>ServerInfo</code> RPC，用于获取 TiFlash 节点 CPU 逻辑核数等硬件信息。</p>
+<p>该调用有几个关键特征：</p>
+<ol>
+<li>发生在 MPP 查询准备阶段；</li>
+<li>TiDB 会为该调用新建 gRPC 连接；</li>
+<li>RPC 调用结束后会关闭连接；</li>
+<li>高查询频率下，该链路会频繁创建和关闭短生命周期 gRPC 连接。</li>
+</ol>
+<p>该行为与现场观察到的短连接、socket fd 持续增长、关闭 MPP 后泄漏停止等现象一致。</p>
+<p>因此，排查方向进一步收敛到 TiDB ↔ TiFlash <code>ServerInfo</code> gRPC 短连接链路。</p>
+<p>从 TiDB 代码路径看，该链路对应：</p>
+<ul>
+<li><code>pkg/planner/core/optimizer.go</code> 中 <code>getTiFlashServerMinLogicalCores</code> 调用 <code>infoschema.FetchClusterServerInfoWithoutPrivilegeCheck(..., ServerInfoType_HardwareInfo, ...)</code>；</li>
+<li><code>pkg/infoschema/tables.go</code> 中 <code>FetchClusterServerInfoWithoutPrivilegeCheck</code> 对每个 TiFlash server 调用 <code>getServerInfoByGRPC</code>；</li>
+<li><code>getServerInfoByGRPC</code> 内部每次执行 <code>grpc.Dial(address, opt)</code>，RPC 完成后通过 <code>defer conn.Close()</code> 关闭 TiDB 侧连接。</li>
+</ul>
+<p>因此，文档中所说的 <code>ServerInfo</code> 短连接链路不是纯现场猜测，而是可以从 TiDB planner 到 infoschema diagnostic gRPC 调用路径对应到代码。</p>
+<h3 id="4-8-分析异常连接关闭路径"><a href="#4-8-分析异常连接关闭路径" class="headerlink" title="4.8 分析异常连接关闭路径"></a>4.8 分析异常连接关闭路径</h3><p>tcpdump 中可以观察到部分连接关闭过程中出现 <code>[RST, ACK]</code>。在相近时间窗口内，TiFlash 进程内 socket、eventfd、eventpoll 数量出现增长。</p>
+<p>这个现象提示 TiFlash 服务端 gRPC 连接处理路径可能在某些异常关闭场景下未能完整回收连接相关 fd，但仍需 syscall 或代码级证据确认。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">sh-5.1# lsof -p1 -nP | grep sock | wc -l</span><br><span class="line">8999</span><br><span class="line"></span><br><span class="line">06:52:29.758566 IP 10.0.128.40.58928 &gt; 10.0.159.129.3930: Flags [R.], seq 2713, ack 4884, win 163, options [nop,nop,TS val 2815434402 ecr 2398108594], length 0</span><br><span class="line">06:52:32.583755 IP 10.0.128.40.42908 &gt; 10.0.159.129.3930: Flags [R.], seq 2691, ack 4884, win 163, options [nop,nop,TS val 2815437228 ecr 2398111420], length 0</span><br><span class="line">06:56:00.184564 IP 10.0.128.40.49098 &gt; 10.0.159.129.3930: Flags [R.], seq 2713, ack 4884, win 163, options [nop,nop,TS val 2815644828 ecr 2398319020], length 0</span><br><span class="line"></span><br><span class="line">sh-5.1# lsof -p1 -nP | grep sock | wc -l</span><br><span class="line">9000</span><br><span class="line"></span><br><span class="line">06:59:15.739577 IP 10.0.128.40.33722 &gt; 10.0.159.129.3930: Flags [R.], seq 2713, ack 4884, win 163, options [nop,nop,TS val 2815840383 ecr 2398514575], length 0</span><br><span class="line">07:03:02.503602 IP 10.0.128.40.50298 &gt; 10.0.159.129.3930: Flags [R.], seq 2713, ack 4884, win 163, options [nop,nop,TS val 2816067147 ecr 2398741339], length 0</span><br><span class="line">07:03:34.253606 IP 10.0.128.40.32906 &gt; 10.0.159.129.3930: Flags [R.], seq 2713, ack 4884, win 163, options [nop,nop,TS val 2816098897 ecr 2398773089], length 0</span><br><span class="line"></span><br><span class="line">sh-5.1# lsof -p1 -nP | grep sock | wc -l</span><br><span class="line">9001</span><br><span class="line"></span><br><span class="line">07:05:28.859558 IP 10.0.128.40.43968 &gt; 10.0.159.129.3930: Flags [R.], seq 2713, ack 4884, win 163, options [nop,nop,TS val 2816213503 ecr 2398887695], length 0</span><br><span class="line">07:05:37.802734 IP 10.0.128.40.33316 &gt; 10.0.159.129.3930: Flags [R.], seq 2713, ack 4884, win 163, options [nop,nop,TS val 2816222447 ecr 2398896639], length 0</span><br><span class="line"></span><br><span class="line">sh-5.1# lsof -p1 -nP | grep sock | wc -l</span><br><span class="line">9002</span><br><span class="line"></span><br><span class="line">07:11:12.165851 IP 10.0.128.40.52334 &gt; 10.0.159.129.3930: Flags [R.], seq 2713, ack 4884, win 163, options [nop,nop,TS val 2816556810 ecr 2399231002], length 0</span><br><span class="line"></span><br><span class="line">sh-5.1# lsof -p1 -nP | grep sock | wc -l</span><br><span class="line">9003</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-9-构造相同-TCP-交互模式进行验证"><a href="#4-9-构造相同-TCP-交互模式进行验证" class="headerlink" title="4.9 构造相同 TCP 交互模式进行验证"></a>4.9 构造相同 TCP 交互模式进行验证</h3><p>为了验证 <code>[RST, ACK]</code> 是否必然导致 fd 泄漏，构造了相同 TCP 交互模式的验证场景。</p>
+<p>验证结果是：未稳定复现 fd 泄漏。</p>
+<p>这说明 <code>[RST, ACK]</code> 可能是触发条件之一，但不是单独充分条件。</p>
+<h3 id="4-10-验证-workaround"><a href="#4-10-验证-workaround" class="headerlink" title="4.10 验证 workaround"></a>4.10 验证 workaround</h3><p>最后通过设置 TiDB 参数 <code>tidb_max_tiflash_threads</code>，避免 planner 在 MPP 查询准备阶段动态获取 TiFlash 节点硬件信息，从而绕开频繁 <code>ServerInfo</code> gRPC 短连接。</p>
+<p>设置后，TiDB 不再需要通过 TiFlash <code>ServerInfo</code> RPC 获取 <code>cpu-logical-cores</code> 来推导 stream count。现场观察到 TiFlash fd 数量停止持续增长。</p>
+<p>该结果进一步确认：本次 fd 泄漏与 TiDB -&gt; TiFlash <code>ServerInfo</code> gRPC 短连接链路高度相关。</p>
+<p>该 workaround 的副作用是：MPP 查询的并行度不再根据 TiFlash 节点 logical cores 自动推导，而是使用固定值；可能影响部分 MPP 查询的计划形态或性能。因此该 workaround 适合作为止血手段，不应替代 TiFlash &#x2F; gRPC 侧 root cause 修复。</p>
+<h2 id="5-后续验证项"><a href="#5-后续验证项" class="headerlink" title="5. 后续验证项"></a>5. 后续验证项</h2><p>如果允许修改基础镜像或 TiFlash 代码，建议进一步验证以下方向：</p>
+<ol>
+<li>修改 gRPC &#x2F; TiFlash 代码，在连接生命周期中增加日志，确认连接创建、RPC 调用、连接关闭、fd 释放的对应关系；</li>
+<li>在 TiFlash 进程上通过 eBPF 或 strace 记录 <code>socket</code>、<code>accept4</code>、<code>eventfd2</code>、<code>epoll_create1</code>、<code>epoll_ctl</code>、<code>close</code>，确认是否存在创建后未关闭，或 <code>close</code> 返回异常。</li>
+<li>对比同 workload 在 GCP &#x2F; AWS、不同 kernel &#x2F; container image 下的 fd 增长曲线。</li>
+<li>明确 tcpdump 中两端 IP、端口角色，例如哪个是 TiDB，哪个是 TiFlash，<code>3930</code> 是否为 TiFlash service 端口。</li>
+<li>将 fd 数量、RST 数量、查询 QPS、TiFlash error 日志按时间线对齐，确认 fd 增长与连接异常关闭之间的时间相关性。</li>
+<li>在 TiFlash &#x2F; gRPC 侧构造最小复现，验证异常关闭路径是否能稳定产生 socket、eventfd、eventpoll 泄漏。</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/Exception/" rel="tag"># Exception</a>
+              <a href="/tags/Debug/" rel="tag"># Debug</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2023/09/04/system/cpp-exception/" rel="prev" title="浅析 C++ 异常机制">
+                  <i class="fa fa-chevron-left"></i> 浅析 C++ 异常机制
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2026</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">TONG, Zhigao</span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="/lib/animejs/lib/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/schemes/muse.js"></script><script src="/js/next-boot.js"></script>
+
+  
+<script src="/lib/hexo-generator-searchdb/dist/search.js" integrity="sha256-vXZMYLEqsROAXkEw93GGIvaB2ab+QW6w3+1ahD9nXXA=" crossorigin="anonymous"></script>
+<script src="/js/third-party/search/local-search.js"></script>
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>
