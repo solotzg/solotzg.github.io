@@ -28,7 +28,7 @@
 <meta property="og:description" content="目前主流的数据库引擎可按照实现方式分为以下几种：B+ Tree、LSM、Delta Main。在类 LSM 的存储方案中，RocksDB 和 Kudu 之流通过 append 的方式写日志并定期重新组织，从而将写数据的压力平衡到读取的过程中。由于相邻的数据可能落在 Memtable 以及不同的 SST 中，在涉及到范围扫描时，需要对结构化&#x2F;半结构化数据进行排序输出。因此，对于数据块排序过">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2019-12-18T08:22:08.000Z">
-<meta property="article:modified_time" content="2022-12-05T04:33:18.098Z">
+<meta property="article:modified_time" content="2022-12-05T04:33:18.000Z">
 <meta property="article:author" content="TONG, Zhigao">
 <meta property="article:tag" content="Zhihu">
 <meta property="article:tag" content="Database">
