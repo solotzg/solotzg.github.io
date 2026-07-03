@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.1.0">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="/lib/@fortawesome/fontawesome-free/css/all.min.css" integrity="sha256-DfWjNxDkM94fVBWx1H5BMMp0Zq7luBlV8QRcSES7s+0=" crossorigin="anonymous">
+  <link rel="stylesheet" href="/lib/animate.css/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"solotzg.github.io","root":"/","images":"/images","scheme":"Mist","darkmode":false,"version":"8.11.1","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":false,"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"},"path":"/search.xml","localsearch":{"enable":true,"trigger":"manual","top_n_per_article":5,"unescape":false,"preload":false}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="数据库执行引擎的内存管理，真正难点不在于统计单条 SQL 用了多少内存，而在于当多个 SQL、后台任务和运行时系统共同竞争实例内存时，如何在 OOM 之前做出可解释的全局决策。传统“先分配、后统计、超限再杀 SQL”的方式处理得太晚，难以表达业务优先级，也无法覆盖逻辑内存与真实进程内存之间的偏差。本文围绕 TiDB 执行引擎的内存仲裁模式，讨论稳定性、利用率、公平性和优先级保护之间的设计取舍。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="数据库执行引擎的内存仲裁模式：从 OOM 保护到资源管控">
+<meta property="og:url" content="https://solotzg.github.io/2025/04/16/pingcap/execution-engine-memory-arbitration/index.html">
+<meta property="og:site_name" content="SOLOTZG">
+<meta property="og:description" content="数据库执行引擎的内存管理，真正难点不在于统计单条 SQL 用了多少内存，而在于当多个 SQL、后台任务和运行时系统共同竞争实例内存时，如何在 OOM 之前做出可解释的全局决策。传统“先分配、后统计、超限再杀 SQL”的方式处理得太晚，难以表达业务优先级，也无法覆盖逻辑内存与真实进程内存之间的偏差。本文围绕 TiDB 执行引擎的内存仲裁模式，讨论稳定性、利用率、公平性和优先级保护之间的设计取舍。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://raw.githubusercontent.com/pingcap/tidb/c2e1dfa992795e778260aa03da52f632742feacf/docs/design/imgs/mem-arbitrator.png">
+<meta property="og:image" content="https://raw.githubusercontent.com/pingcap/tidb/c2e1dfa992795e778260aa03da52f632742feacf/docs/design/imgs/mem-arbitrator-auto-tune.png">
+<meta property="article:published_time" content="2025-04-15T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-07-03T09:14:03.962Z">
+<meta property="article:author" content="TONG, Zhigao">
+<meta property="article:tag" content="PingCAP">
+<meta property="article:tag" content="Database">
+<meta property="article:tag" content="HTAP">
+<meta property="article:tag" content="TiDB">
+<meta property="article:tag" content="Memory">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/pingcap/tidb/c2e1dfa992795e778260aa03da52f632742feacf/docs/design/imgs/mem-arbitrator.png">
+
+
+<link rel="canonical" href="https://solotzg.github.io/2025/04/16/pingcap/execution-engine-memory-arbitration/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://solotzg.github.io/2025/04/16/pingcap/execution-engine-memory-arbitration/","path":"2025/04/16/pingcap/execution-engine-memory-arbitration/","title":"数据库执行引擎的内存仲裁模式：从 OOM 保护到资源管控"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>数据库执行引擎的内存仲裁模式：从 OOM 保护到资源管控 | SOLOTZG</title>
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">SOLOTZG</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>Tags</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>Archives</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup"><div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off" maxlength="80"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close" role="button">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div class="search-result-container no-result">
+  <div class="search-result-icon">
+    <i class="fa fa-spinner fa-pulse fa-5x"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+        
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E6%96%87%E8%A6%81%E8%A7%A3%E5%86%B3%E7%9A%84%E9%97%AE%E9%A2%98"><span class="nav-number">1.</span> <span class="nav-text">本文要解决的问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BC%A0%E7%BB%9F%E6%96%B9%E5%BC%8F%E6%9C%89%E4%BB%80%E4%B9%88%E9%97%AE%E9%A2%98"><span class="nav-number">2.</span> <span class="nav-text">传统方式有什么问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%AE%BE%E8%AE%A1%E7%9B%AE%E6%A0%87"><span class="nav-number">3.</span> <span class="nav-text">设计目标</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%9B%AE%E6%A0%87"><span class="nav-number">3.1.</span> <span class="nav-text">目标</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A0%B8%E5%BF%83%E6%80%9D%E8%B7%AF%EF%BC%9A%E5%85%88%E7%94%B3%E8%AF%B7%E9%A2%9D%E5%BA%A6%EF%BC%8C%E5%86%8D%E7%BB%A7%E7%BB%AD%E7%94%A8%E5%86%85%E5%AD%98"><span class="nav-number">4.</span> <span class="nav-text">核心思路：先申请额度，再继续用内存</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E4%B8%8D%E8%83%BD%E5%8F%AA%E9%9D%A0%E5%8D%95-SQL-%E5%86%85%E5%AD%98%E4%B8%8A%E9%99%90"><span class="nav-number">4.1.</span> <span class="nav-text">为什么不能只靠单 SQL 内存上限</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E4%BD%93%E6%9E%B6%E6%9E%84"><span class="nav-number">5.</span> <span class="nav-text">总体架构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E8%BF%BD%E8%B8%AA%E5%99%A8%EF%BC%88Memory-Tracker%EF%BC%89%EF%BC%9A%E8%BF%BD%E8%B8%AA%E7%BB%9F%E8%AE%A1%E5%85%A5%E5%8F%A3"><span class="nav-number">5.1.</span> <span class="nav-text">内存追踪器（Memory Tracker）：追踪统计入口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E8%B5%84%E6%BA%90%E6%B1%A0%EF%BC%88Memory-Resource-Pool%EF%BC%89%EF%BC%9A%E7%BB%99-SQL-%E5%BB%BA%E8%B5%84%E6%BA%90%E8%B4%A6%E6%88%B7"><span class="nav-number">5.2.</span> <span class="nav-text">内存资源池（Memory Resource Pool）：给 SQL 建资源账户</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#await-free-pool%EF%BC%9A%E7%9F%AD%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E5%86%85%E5%AD%98%E7%9A%84%E5%BF%AB%E9%80%9F%E8%B7%AF%E5%BE%84"><span class="nav-number">5.2.1.</span> <span class="nav-text">await-free pool：短生命周期内存的快速路径</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%A8%E5%B1%80%E5%86%85%E5%AD%98%E4%BB%B2%E8%A3%81%E5%99%A8%EF%BC%88Global-Memory-Arbitrator%EF%BC%89%EF%BC%9A%E5%81%9A%E5%AE%9E%E4%BE%8B%E7%BA%A7%E5%86%B3%E7%AD%96"><span class="nav-number">5.3.</span> <span class="nav-text">全局内存仲裁器（Global Memory Arbitrator）：做实例级决策</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A0%B8%E5%BF%83%E8%AE%BE%E8%AE%A1%E9%9A%BE%E7%82%B9%EF%BC%9A%E9%80%BB%E8%BE%91%E9%A2%9D%E5%BA%A6%E5%92%8C%E7%9C%9F%E5%AE%9E%E5%86%85%E5%AD%98%E4%B8%8D%E4%B8%80%E8%87%B4"><span class="nav-number">6.</span> <span class="nav-text">核心设计难点：逻辑额度和真实内存不一致</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%80%E6%9D%A1-SQL-%E7%9A%84%E6%89%A7%E8%A1%8C%E6%B5%81%E7%A8%8B"><span class="nav-number">7.</span> <span class="nav-text">一条 SQL 的执行流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%A4%E7%A7%8D%E5%B7%A5%E4%BD%9C%E6%A8%A1%E5%BC%8F"><span class="nav-number">8.</span> <span class="nav-text">两种工作模式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#STANDARD-%E6%A8%A1%E5%BC%8F%EF%BC%9A%E7%AE%80%E5%8D%95%E5%85%AC%E5%B9%B3%E7%9A%84%E9%BB%98%E8%AE%A4%E4%BB%B2%E8%A3%81"><span class="nav-number">8.1.</span> <span class="nav-text">STANDARD 模式：简单公平的默认仲裁</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#PRIORITY-%E6%A8%A1%E5%BC%8F%EF%BC%9A%E4%BF%9D%E6%8A%A4%E9%AB%98%E4%BC%98%E5%85%88%E7%BA%A7-SQL"><span class="nav-number">8.2.</span> <span class="nav-text">PRIORITY 模式：保护高优先级 SQL</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%85%8D%E7%BD%AE%E5%85%A5%E5%8F%A3%EF%BC%9A%E8%A1%A8%E8%BE%BE%E7%AD%96%E7%95%A5%EF%BC%8C%E4%B8%8D%E6%9B%BF%E4%BB%A3%E6%9E%B6%E6%9E%84"><span class="nav-number">8.3.</span> <span class="nav-text">配置入口：表达策略，不替代架构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CANCEL-%E5%92%8C-KILL-%E7%9A%84%E5%8C%BA%E5%88%AB"><span class="nav-number">9.</span> <span class="nav-text">CANCEL 和 KILL 的区别</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#CANCEL"><span class="nav-number">9.1.</span> <span class="nav-text">CANCEL</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#KILL"><span class="nav-number">9.2.</span> <span class="nav-text">KILL</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#out-of-control%EF%BC%9A%E9%A3%8E%E9%99%A9%E7%A9%BA%E9%97%B4%E7%9A%84%E5%BB%BA%E6%A8%A1"><span class="nav-number">10.</span> <span class="nav-text">out-of-control：风险空间的建模</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#buffer-%E5%92%8C%E6%AD%BB%E9%94%81%E8%A7%84%E9%81%BF"><span class="nav-number">10.1.</span> <span class="nav-text">buffer 和死锁规避</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#runtime-feedback%EF%BC%9A%E9%80%BB%E8%BE%91%E9%A2%9D%E5%BA%A6%E4%B9%8B%E5%A4%96%E7%9A%84%E7%9C%9F%E5%AE%9E%E4%B8%96%E7%95%8C"><span class="nav-number">11.</span> <span class="nav-text">runtime feedback：逻辑额度之外的真实世界</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Auto-Tune%EF%BC%9A%E6%8A%8A%E5%8F%8D%E9%A6%88%E5%8F%98%E6%88%90%E4%B8%8B%E4%B8%80%E8%BD%AE%E5%86%B3%E7%AD%96"><span class="nav-number">11.1.</span> <span class="nav-text">Auto Tune：把反馈变成下一轮决策</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%92%8C-Resource-Group-%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="nav-number">12.</span> <span class="nav-text">和 Resource Group 的关系</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8E%A8%E5%B9%BF%E5%88%B0%E6%89%A7%E8%A1%8C%E5%BC%95%E6%93%8E%E8%B5%84%E6%BA%90%E7%AE%A1%E6%8E%A7"><span class="nav-number">13.</span> <span class="nav-text">推广到执行引擎资源管控</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%AF%E8%A7%82%E6%B5%8B%E6%80%A7"><span class="nav-number">14.</span> <span class="nav-text">可观测性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%BB%E8%A6%81%E5%8F%96%E8%88%8D%E6%80%BB%E7%BB%93"><span class="nav-number">15.</span> <span class="nav-text">主要取舍总结</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%A8%B3%E5%AE%9A%E6%80%A7-vs-%E5%88%A9%E7%94%A8%E7%8E%87"><span class="nav-number">15.1.</span> <span class="nav-text">稳定性 vs 利用率</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BF%AB%E9%80%9F%E5%A4%B1%E8%B4%A5-vs-%E6%88%90%E5%8A%9F%E7%8E%87"><span class="nav-number">15.2.</span> <span class="nav-text">快速失败 vs 成功率</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%98%E5%85%88%E7%BA%A7%E4%BF%9D%E6%8A%A4-vs-%E5%85%AC%E5%B9%B3%E6%80%A7"><span class="nav-number">15.3.</span> <span class="nav-text">优先级保护 vs 公平性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%89%E6%A1%A3%E4%BC%98%E5%85%88%E7%BA%A7-vs-%E7%BB%86%E7%B2%92%E5%BA%A6%E9%9A%94%E7%A6%BB"><span class="nav-number">15.4.</span> <span class="nav-text">三档优先级 vs 细粒度隔离</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%A8%E5%B1%80%E6%8E%A7%E5%88%B6-vs-%E7%83%AD%E8%B7%AF%E5%BE%84%E5%BC%80%E9%94%80"><span class="nav-number">15.5.</span> <span class="nav-text">全局控制 vs 热路径开销</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#await-free-pool-vs-root-pool"><span class="nav-number">15.6.</span> <span class="nav-text">await-free pool vs root pool</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#buffer-vs-%E5%B9%B6%E5%8F%91%E5%BA%A6"><span class="nav-number">15.7.</span> <span class="nav-text">buffer vs 并发度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#runtime-feedback-vs-%E5%8F%AF%E9%A2%84%E6%B5%8B%E6%80%A7"><span class="nav-number">15.8.</span> <span class="nav-text">runtime feedback vs 可预测性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Auto-Tune-vs-%E5%8F%AF%E8%A7%A3%E9%87%8A%E6%80%A7"><span class="nav-number">15.9.</span> <span class="nav-text">Auto Tune vs 可解释性</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#out-of-control-%E4%BC%B0%E7%AE%97-vs-%E5%86%B3%E7%AD%96%E5%87%86%E7%A1%AE%E6%80%A7"><span class="nav-number">15.10.</span> <span class="nav-text">out-of-control 估算 vs 决策准确性</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%A3%8E%E9%99%A9"><span class="nav-number">16.</span> <span class="nav-text">风险</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BB%93%E8%AE%BA"><span class="nav-number">17.</span> <span class="nav-text">结论</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author site-overview-item animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="TONG, Zhigao"
+      src="/images/avatar.gif">
+  <p class="site-author-name" itemprop="name">TONG, Zhigao</p>
+  <div class="site-description" itemprop="description">Blogs</div>
+</div>
+<div class="site-state-wrap site-overview-item animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">12</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">34</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author site-overview-item animated">
+      <span class="links-of-author-item">
+        <a href="https://github.com/solotzg" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;solotzg" rel="noopener" target="_blank"><i class="fab fa-github fa-fw"></i>GitHub</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="mailto:solotzg@gmail.com" title="E-Mail → mailto:solotzg@gmail.com" rel="noopener" target="_blank"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+  </div>
+
+
+
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-dimmer"></div>
+
+
+    </header>
+
+    
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://solotzg.github.io/2025/04/16/pingcap/execution-engine-memory-arbitration/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="TONG, Zhigao">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="SOLOTZG">
+      <meta itemprop="description" content="Blogs">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="数据库执行引擎的内存仲裁模式：从 OOM 保护到资源管控 | SOLOTZG">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          数据库执行引擎的内存仲裁模式：从 OOM 保护到资源管控
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+
+      <time title="Created: 2025-04-16 00:00:00" itemprop="dateCreated datePublished" datetime="2025-04-16T00:00:00+08:00">2025-04-16</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">Edited on</span>
+      <time title="Modified: 2026-07-03 17:14:03" itemprop="dateModified" datetime="2026-07-03T17:14:03+08:00">2026-07-03</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/PingCAP/" itemprop="url" rel="index"><span itemprop="name">PingCAP</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+        <p>数据库执行引擎的内存管理，真正难点不在于统计单条 SQL 用了多少内存，而在于当多个 SQL、后台任务和运行时系统共同竞争实例内存时，如何在 OOM 之前做出可解释的全局决策。传统“先分配、后统计、超限再杀 SQL”的方式处理得太晚，难以表达业务优先级，也无法覆盖逻辑内存与真实进程内存之间的偏差。本文围绕 TiDB 执行引擎的内存仲裁模式，讨论稳定性、利用率、公平性和优先级保护之间的设计取舍。</p>
+<span id="more"></span>
+<h2 id="本文要解决的问题"><a href="#本文要解决的问题" class="headerlink" title="本文要解决的问题"></a>本文要解决的问题</h2><p>数据库执行引擎中，内存管理面临的难题是：</p>
+<ul>
+<li>当多个 SQL 同时增长内存时，系统应该让谁继续执行？</li>
+<li>当实例内存已经紧张时，新来的内存申请是等待、失败，还是抢占其他 SQL？</li>
+<li>当进程接近 OOM 时，应该取消哪个 SQL，还是强制终止正在运行的 SQL？</li>
+<li>如何让 OLTP、OLAP、后台任务在同一个 TiDB 实例上有不同的资源保障？</li>
+</ul>
+<h2 id="传统方式有什么问题"><a href="#传统方式有什么问题" class="headerlink" title="传统方式有什么问题"></a>传统方式有什么问题</h2><p>传统做法大致是：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">SQL 执行</span><br><span class="line">  -&gt; 分配内存</span><br><span class="line">  -&gt; 追踪统计内存使用</span><br><span class="line">  -&gt; 实例内存超过阈值</span><br><span class="line">  -&gt; 找到内存使用最高的 SQL</span><br><span class="line">  -&gt; 强制终止这个 SQL</span><br></pre></td></tr></table></figure>
+
+<p>这种方式有优点：简单、侵入小、容易落地。但它有一个根本问题：处理得太晚。</p>
+<p>等实例内存已经超过阈值时，通常已经发生了下面这些事情：</p>
+<ul>
+<li>Go 堆内存已经很高，GC 压力已经出现。</li>
+<li>SQL 已经分配了大量对象，强制终止后也不一定马上释放。</li>
+<li>系统只能看到“谁用得多”，但不知道“谁应该被保护”。</li>
+<li>所有 SQL 在全局内存风险面前几乎是同一类，业务优先级很难体现。</li>
+</ul>
+<p>所以，仅靠事后强制终止内存使用最多的 SQL，不能解决执行引擎的资源竞争问题。我们需要在 SQL 继续扩大内存占用之前，就进行全局判断。</p>
+<h2 id="设计目标"><a href="#设计目标" class="headerlink" title="设计目标"></a>设计目标</h2><h3 id="目标"><a href="#目标" class="headerlink" title="目标"></a>目标</h3><ul>
+<li>保障 TiDB 实例内存安全，避免 OOM。</li>
+<li>减少极端内存压力下的 GC 抖动。</li>
+<li>让 SQL 因内存不足而失败时，原因更明确、更可解释。</li>
+<li>支持按业务优先级调度内存资源。</li>
+<li>在内存充足时保持低开销，不影响普通小查询。</li>
+<li>为后续更统一的执行引擎资源管控打基础。</li>
+</ul>
+<h2 id="核心思路：先申请额度，再继续用内存"><a href="#核心思路：先申请额度，再继续用内存" class="headerlink" title="核心思路：先申请额度，再继续用内存"></a>核心思路：先申请额度，再继续用内存</h2><p>内存仲裁的核心变化是：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Before:</span><br><span class="line"></span><br><span class="line">先分配内存 -&gt; 再统计 -&gt; 超限后强制终止</span><br><span class="line"></span><br><span class="line">After:</span><br><span class="line"></span><br><span class="line">先申请内存额度 -&gt; 由全局仲裁器判断 -&gt; 再继续执行</span><br></pre></td></tr></table></figure>
+
+<p>这里的“额度”可以理解为逻辑内存预算。SQL 不一定真的马上分配这么多物理内存，但它需要先向系统声明：我接下来可能需要更多内存。</p>
+<p>全局仲裁器收到申请后，会根据当前实例状态做决定：</p>
+<ul>
+<li>内存充足：允许申请。</li>
+<li>内存紧张：让申请等待，或者取消申请。</li>
+<li>有优先级差异：保护高优先级 SQL，回收低优先级 SQL。</li>
+<li>已经接近 OOM 风险：强制终止部分正在运行的 SQL，优先保护 TiDB 进程。</li>
+</ul>
+<p>这个设计的关键不是“限制每个 SQL”，而是“在实例级别做资源决策”。</p>
+<h3 id="为什么不能只靠单-SQL-内存上限"><a href="#为什么不能只靠单-SQL-内存上限" class="headerlink" title="为什么不能只靠单 SQL 内存上限"></a>为什么不能只靠单 SQL 内存上限</h3><p>单 SQL 内存上限只能回答“这个 SQL 有没有超过自己的限制”，不能回答“整个 TiDB 实例是否还安全”。</p>
+<p>极端情况下，每个 SQL 都没有超过自己的内存上限，但并发叠加后，实例堆内存仍然可能进入危险区。反过来，有些 SQL 的逻辑额度不高，但由于未追踪对象、临时对象或 GC 滞后，也可能造成真实内存压力。</p>
+<p>这就是为什么需要实例级仲裁器，而不是只依赖 SQL 自己的内存上限。</p>
+<h2 id="总体架构"><a href="#总体架构" class="headerlink" title="总体架构"></a>总体架构</h2><p>内存仲裁可以分成三层。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">SQL / 执行器 / 计划器 / 编译器</span><br><span class="line">              |</span><br><span class="line">              v</span><br><span class="line">        内存追踪器（Memory Tracker）</span><br><span class="line">              |</span><br><span class="line">              v</span><br><span class="line">        内存资源池（Memory Resource Pool）</span><br><span class="line">              |</span><br><span class="line">              v</span><br><span class="line">      全局内存仲裁器（Global Memory Arbitrator）</span><br><span class="line">              |</span><br><span class="line">              v</span><br><span class="line">  运行时内存 / GC / 实例内存上限</span><br></pre></td></tr></table></figure>
+
+<p>下图表示 TiDB 内存仲裁模式的总体架构</p>
+<p><img src="https://raw.githubusercontent.com/pingcap/tidb/c2e1dfa992795e778260aa03da52f632742feacf/docs/design/imgs/mem-arbitrator.png" alt="Memory arbitrator architecture"></p>
+<h3 id="内存追踪器（Memory-Tracker）：追踪统计入口"><a href="#内存追踪器（Memory-Tracker）：追踪统计入口" class="headerlink" title="内存追踪器（Memory Tracker）：追踪统计入口"></a>内存追踪器（Memory Tracker）：追踪统计入口</h3><p>执行器、算子、编译器、优化器仍然通过内存追踪器记录内存变化。</p>
+<p>这样做的好处是：</p>
+<ul>
+<li>不需要让所有算子直接感知全局仲裁器。</li>
+<li>保留已有的 SQL 内存统计和诊断能力。</li>
+<li>让内存仲裁可以逐步接入，而不是重写执行器内存管理。</li>
+</ul>
+<h3 id="内存资源池（Memory-Resource-Pool）：给-SQL-建资源账户"><a href="#内存资源池（Memory-Resource-Pool）：给-SQL-建资源账户" class="headerlink" title="内存资源池（Memory Resource Pool）：给 SQL 建资源账户"></a>内存资源池（Memory Resource Pool）：给 SQL 建资源账户</h3><p>内存资源池可以理解为 SQL 或任务的内存账户。</p>
+<p>它记录这个任务已经获得了多少额度、用了多少额度、还能不能继续扩容。当 SQL 的内存使用变大时，它不是直接无限增长，而是通过自己的内存账户向上申请更多额度。</p>
+<p>这一层解决的是“内存归谁”的问题。它内部可以分成两类路径：</p>
+<ul>
+<li>root pool（执行内存账户）：用于执行阶段持续增长、可能需要等待或回收的内存。</li>
+<li>await-free pool（快速额度池）：用于短生命周期内存和小额度增长。</li>
+</ul>
+<h4 id="await-free-pool：短生命周期内存的快速路径"><a href="#await-free-pool：短生命周期内存的快速路径" class="headerlink" title="await-free pool：短生命周期内存的快速路径"></a>await-free pool：短生命周期内存的快速路径</h4><p>不是所有内存使用都适合进入完整的 root pool 仲裁流程。</p>
+<p>解析、编译这类阶段生命周期短，内存使用更多依赖估算。如果它们每次都进入普通等待队列，仲裁器会承受不必要的调度开销。因此当前 TiDB 会按 SQL 复杂度估算一段临时额度，通过 await-free pool 占用，阶段结束后释放。</p>
+<p>执行阶段也会先使用 await-free pool 的小额度路径。当 SQL 内存增长超过小额度阈值，或者 await-free pool 无法继续补充额度时，SQL 才升级到 root pool，进入完整的等待、回收和优先级仲裁流程。</p>
+<p>await-free pool 不是绕过仲裁。它仍然受全局额度约束，只是不进入执行阶段的 root pool 普通等待队列。这个设计把短生命周期内存和小额度增长纳入全局视野，同时避免热路径被过度调度。</p>
+<h3 id="全局内存仲裁器（Global-Memory-Arbitrator）：做实例级决策"><a href="#全局内存仲裁器（Global-Memory-Arbitrator）：做实例级决策" class="headerlink" title="全局内存仲裁器（Global Memory Arbitrator）：做实例级决策"></a>全局内存仲裁器（Global Memory Arbitrator）：做实例级决策</h3><p>全局内存仲裁器是实例级决策者。每个 TiDB 实例有一个仲裁器。</p>
+<p>它负责回答：</p>
+<ul>
+<li>当前实例还剩多少可分配内存额度？</li>
+<li>哪些 SQL 正在等待额度？</li>
+<li>哪些 SQL 是高优先级，哪些是低优先级？</li>
+<li>当前运行时内存是否已经危险？</li>
+<li>如果资源不够，应该取消、等待、回收还是强制终止？</li>
+</ul>
+<p>这一层解决的是“系统还能不能继续分配”的问题。</p>
+<h2 id="核心设计难点：逻辑额度和真实内存不一致"><a href="#核心设计难点：逻辑额度和真实内存不一致" class="headerlink" title="核心设计难点：逻辑额度和真实内存不一致"></a>核心设计难点：逻辑额度和真实内存不一致</h2><p>内存仲裁最难的地方，不是维护一个全局计数器，而是判断“还有多少内存可以安全分配”。</p>
+<p>SQL 内存追踪器记录的是逻辑内存使用，Go 运行时暴露的是进程真实内存状态。两者经常不一致：</p>
+<ul>
+<li>SQL 内存追踪器不一定覆盖所有临时对象。</li>
+<li>SQL 释放对象后，Go 堆内存不一定马上下降。</li>
+<li>运行时、goroutine 栈、堆外内存、缓存、后台任务都会占用内存。</li>
+<li>有些内存很难准确归属到某个 SQL。</li>
+<li>同样的逻辑额度，在不同负载下可能对应不同的堆内存压力。</li>
+</ul>
+<p>因此，全局仲裁器不能简单地用下面这个公式做决策：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">可分配额度 = 实例内存上限 - 已分配额度</span><br></pre></td></tr></table></figure>
+
+<p>这个公式看起来合理，但会漏掉一大块风险：已经在进程里、但不在 SQL 逻辑额度里的内存。它们可能来自 GC 滞后，也可能来自未追踪对象，还可能来自系统后台任务。</p>
+<p>这意味着系统需要为“无法安全继续分配的风险空间”建模。这个风险空间在后文称为 out-of-control（失控风险空间）。</p>
+<h2 id="一条-SQL-的执行流程"><a href="#一条-SQL-的执行流程" class="headerlink" title="一条 SQL 的执行流程"></a>一条 SQL 的执行流程</h2><p>简化后的流程如下：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">SQL 开始执行</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">解析 / 编译阶段按 SQL 复杂度估算额度</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">通过 await-free pool 临时占用，阶段结束后释放</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">进入执行阶段</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">把 SQL 的内存追踪器接到内存仲裁上下文</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">小内存增长走快速路径</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">增长超过小额度阈值，或 await-free pool 补额度失败</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">SQL 进入 root pool</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">root pool 需要扩容时，向全局仲裁器申请额度</span><br></pre></td></tr></table></figure>
+
+<p>这里有一个重要取舍：不是每一次内存增长都进入全局仲裁。</p>
+<p>如果所有小对象分配都进入全局队列，仲裁器本身会成为性能瓶颈。所以当前设计保留了轻量路径：</p>
+<ul>
+<li>解析、编译这类短生命周期阶段通过 await-free pool 使用估算额度。</li>
+<li>执行阶段的小额度增长也先走 await-free pool。</li>
+<li>只有当增长超过小额度阈值，或者 await-free pool 不能继续补充额度时，才进入执行阶段的 root pool 仲裁。</li>
+</ul>
+<p>这个取舍牺牲了一点控制精度，换来正常路径的低开销。</p>
+<h2 id="两种工作模式"><a href="#两种工作模式" class="headerlink" title="两种工作模式"></a>两种工作模式</h2><p>内存不足时，不同业务希望的行为不一样。有些系统希望尽快失败并重试；有些系统希望保护关键 SQL。因此仲裁器提供不同模式。</p>
+<h3 id="STANDARD-模式：简单公平的默认仲裁"><a href="#STANDARD-模式：简单公平的默认仲裁" class="headerlink" title="STANDARD 模式：简单公平的默认仲裁"></a>STANDARD 模式：简单公平的默认仲裁</h3><p>STANDARD 模式强调简单、公平、可解释。SQL 运行过程中动态申请内存额度；资源不足时，申请会按顺序等待。如果全局内存仍然不足，仲裁器才会让申请失败并取消对应 SQL。</p>
+<p>这个模式不表达业务优先级。它适合先建立一套全局内存准入和等待机制，再由上层重试或其他策略处理失败。</p>
+<p>适合场景：</p>
+<ul>
+<li>希望行为简单、可预测。</li>
+<li>不需要区分业务优先级。</li>
+<li>可以接受 SQL 在资源不足时等待，或者最终失败后由上层重试。</li>
+</ul>
+<p>取舍：</p>
+<ul>
+<li>好处：规则简单，同一类 SQL 之间更公平。</li>
+<li>代价：不能保护关键业务；资源紧张时可能增加等待时间。</li>
+</ul>
+<h3 id="PRIORITY-模式：保护高优先级-SQL"><a href="#PRIORITY-模式：保护高优先级-SQL" class="headerlink" title="PRIORITY 模式：保护高优先级 SQL"></a>PRIORITY 模式：保护高优先级 SQL</h3><p>PRIORITY 模式下，SQL 会带有内存优先级。优先级可以来自 Resource Group（资源组）。</p>
+<p>这里需要注意：资源组可以有多个，但当前内存仲裁消费的是资源组上的三档优先级：LOW、MEDIUM、HIGH。也就是说，它表达的是资源紧张时的保护顺序，不是完整的内存配额、保底或隔离模型。</p>
+<p>当内存不足时，系统会优先保护高优先级 SQL，并尝试取消或回收低优先级 SQL。</p>
+<p>适合场景：</p>
+<ul>
+<li>OLTP 和 OLAP 混合部署。</li>
+<li>关键业务需要更高保障。</li>
+<li>可以接受低优先级查询在资源紧张时更容易失败。</li>
+</ul>
+<p>取舍：</p>
+<ul>
+<li>好处：可以表达业务重要性。</li>
+<li>代价：优先级粒度较粗，低优先级 SQL 可能被频繁取消；如果大量资源组都配置成 HIGH，模式会退化。</li>
+</ul>
+<p>除了 STANDARD 和 PRIORITY，系统还可以支持更细的等待策略。例如低延迟请求可以选择不在当前 TiDB 节点等待内存释放，而是快速取消，交给上层重试。这类策略不是新的仲裁模型，而是对“资源不足时是否等待”的补充。</p>
+<h3 id="配置入口：表达策略，不替代架构"><a href="#配置入口：表达策略，不替代架构" class="headerlink" title="配置入口：表达策略，不替代架构"></a>配置入口：表达策略，不替代架构</h3><p>从用户接口看，内存仲裁需要把几个关键策略暴露出来：是否启用仲裁、采用哪种仲裁模式、soft limit 如何设置、单个 SQL 是否显式预留内存资源、资源不足时是否倾向快速失败。</p>
+<p>这些配置不应该被理解成新的架构层。它们只是把前面的设计选择变成可操作的入口：</p>
+<ul>
+<li>仲裁模式决定资源不足时按公平顺序处理，还是按业务优先级处理。</li>
+<li>soft limit 决定全局内存额度边界，是安全性和利用率之间的调节旋钮。</li>
+<li>query reserved 用于提高单个 SQL 的隔离性，减少执行过程中多次申请额度的开销。</li>
+<li>快速失败策略用于低延迟业务，让 SQL 不在当前 TiDB 节点长时间等待，而是交给上层重试。</li>
+</ul>
+<p>这部分在架构上最重要的不是变量名字，而是用户能把业务意图表达给执行引擎。</p>
+<h2 id="CANCEL-和-KILL-的区别"><a href="#CANCEL-和-KILL-的区别" class="headerlink" title="CANCEL 和 KILL 的区别"></a>CANCEL 和 KILL 的区别</h2><p>内存仲裁必须区分两件事：</p>
+<ul>
+<li>只是没有足够额度。</li>
+<li>TiDB 进程已经接近 OOM。</li>
+</ul>
+<p>这里的 KILL 指强制终止 SQL 执行，不是终止 TiDB 进程。</p>
+<p>对应的处理也不同：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">额度不足        -&gt; CANCEL</span><br><span class="line">实例 OOM 风险   -&gt; KILL</span><br></pre></td></tr></table></figure>
+
+<h3 id="CANCEL"><a href="#CANCEL" class="headerlink" title="CANCEL"></a>CANCEL</h3><p>CANCEL 是普通资源不足时的处理方式。它说明 SQL 没有拿到足够额度，或者系统希望它让出资源。</p>
+<p>CANCEL 是调度行为，不一定表示实例已经危险。</p>
+<h3 id="KILL"><a href="#KILL" class="headerlink" title="KILL"></a>KILL</h3><p>KILL 是最后保护手段。只有当运行时内存已经进入危险区，并且 GC 或自然释放无法及时降低压力时，才应该强制终止正在运行的 SQL。</p>
+<p>这个区分很重要。否则所有内存不足都会变成强制终止，用户体验会很差，也很难解释。</p>
+<h2 id="out-of-control：风险空间的建模"><a href="#out-of-control：风险空间的建模" class="headerlink" title="out-of-control：风险空间的建模"></a>out-of-control：风险空间的建模</h2><p>out-of-control 指的是仲裁器不应该继续分配出去的那部分内存空间。它不一定都是“未追踪内存”，也包括因为 soft limit（软上限）、GC 滞后、运行时开销等原因需要保留的安全空间。</p>
+<p>全局仲裁不能只看 SQL 内存追踪器统计出来的内存。真实进程内存还包括：</p>
+<ul>
+<li>Go 堆内存中等待 GC 的对象。</li>
+<li>未被内存追踪器精确统计的临时对象。</li>
+<li>goroutine 栈。</li>
+<li>运行时和堆外内存开销。</li>
+<li>缓存和后台任务。</li>
+</ul>
+<p>系统需要在硬限制下面留出安全空间，这个安全空间就是 out-of-control 估算的主要结果。</p>
+<p>换成仲裁器的分配模型，就是：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">可安全分配额度 ~= 实例内存上限 - 已分配额度 - buffer - out-of-control</span><br></pre></td></tr></table></figure>
+
+<p>可以把实例内存理解成：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">实例内存上限</span><br><span class="line">├── 已分配额度</span><br><span class="line">├── 还能继续分配的额度</span><br><span class="line">├── 调度和回收需要的 buffer</span><br><span class="line">└── 不适合继续分配的 out-of-control</span><br></pre></td></tr></table></figure>
+
+<p>可以把 out-of-control 理解成几类风险的最大值：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">out-of-control =</span><br><span class="line">  max(</span><br><span class="line">    未追踪或难归属的内存,</span><br><span class="line">    运行时堆内存与逻辑额度的偏差,</span><br><span class="line">    soft limit 要求保留的空间,</span><br><span class="line">    历史风险状态给出的保守余量</span><br><span class="line">  )</span><br></pre></td></tr></table></figure>
+
+<p>soft limit 是其中一个重要来源。它用来控制“最多分配多少额度给 SQL”，确保系统不会把硬限制全部暴露给执行层。</p>
+<p>下图展示了 TiDB 内存仲裁模式中 out-of-control、soft limit、未追踪内存和历史画像之间的关系。</p>
+<p><img src="https://raw.githubusercontent.com/pingcap/tidb/c2e1dfa992795e778260aa03da52f632742feacf/docs/design/imgs/mem-arbitrator-auto-tune.png" alt="Memory arbitrator auto tune"></p>
+<h3 id="buffer-和死锁规避"><a href="#buffer-和死锁规避" class="headerlink" title="buffer 和死锁规避"></a>buffer 和死锁规避</h3><p>动态内存仲裁还有一个容易被忽略的问题：所有 root pool 都在等待额度时，系统不能让仲裁过程本身也被阻塞。否则会出现“大家都在等别人释放内存，但没有人能够继续推进到释放点”的风险。</p>
+<p>因此，仲裁器需要保留一部分 buffer，用来支持取消、回收、状态推进等必要动作。在优先级模式下，还可以引入类似 privileged budget（特权额度）的机制：极端情况下，只允许一个 root pool 继续向前推进，直到它释放资源或完成退出。</p>
+<p>这个设计的收益是避免全局卡死；代价是极端压力下并发度可能下降，甚至退化成接近单并发推进。它不是为了提高性能，而是为了在资源已经紧张时保证系统仍然能完成回收动作。</p>
+<p>取舍：</p>
+<ul>
+<li>out-of-control 估算越高，系统越安全，但 SQL 更容易等待或取消。</li>
+<li>out-of-control 估算越低，内存利用率越高，但更容易触发 GC 抖动或 OOM。</li>
+<li>soft limit 可以采用自动计算方式，但它只是风险边界的调节方式，不是独立的仲裁模式。</li>
+</ul>
+<p>估算没有完美答案：</p>
+<table>
+<thead>
+<tr>
+<th>估算偏高</th>
+<th>估算偏低</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>更安全</td>
+<td>内存利用率更高</td>
+</tr>
+<tr>
+<td>SQL 更早等待或取消</td>
+<td>SQL 更容易继续执行</td>
+</tr>
+<tr>
+<td>可能浪费可用内存</td>
+<td>更容易触发 GC 抖动或 OOM</td>
+</tr>
+<tr>
+<td>用户感知是“太保守”</td>
+<td>用户感知是“不稳定”</td>
+</tr>
+</tbody></table>
+<p>因此，仲裁器的目标不是算出一个绝对准确的 out-of-control，而是在安全性和利用率之间找到一个能动态调整的边界。</p>
+<h2 id="runtime-feedback：逻辑额度之外的真实世界"><a href="#runtime-feedback：逻辑额度之外的真实世界" class="headerlink" title="runtime feedback：逻辑额度之外的真实世界"></a>runtime feedback：逻辑额度之外的真实世界</h2><p>逻辑额度和真实内存不是一回事。</p>
+<p>一个 SQL 可能只报告了一部分内存，但 Go 运行时里还有未释放对象；也可能 SQL 已经退出，但堆内存还没被 GC 回收。因此，仲裁器不能只看 SQL 的逻辑额度，还要看运行时内存。</p>
+<p>runtime feedback 主要用于回答：</p>
+<ul>
+<li>当前堆内存是否已经很高？</li>
+<li>是否有大量未追踪内存？</li>
+<li>GC 是否能及时释放内存？</li>
+<li>逻辑额度和真实堆内存之间是否长期不匹配？</li>
+</ul>
+<p>也就是说，out-of-control 给出风险边界，runtime feedback 负责根据运行状态修正这个边界。</p>
+<p>它的作用是把仲裁器从固定阈值判断变成闭环控制：</p>
+<ol>
+<li>先根据逻辑额度做分配。</li>
+<li>再观察真实堆内存是否按预期变化。</li>
+<li>如果堆内存压力明显高于额度预期，就扩大 out-of-control。</li>
+<li>如果风险解除，再逐步释放保守余量。</li>
+</ol>
+<p>这类控制一定不是完全精确的，但比固定阈值更能适应不同负载。</p>
+<p>引入 runtime feedback 的取舍是：</p>
+<ul>
+<li>好处：更接近真实进程状态，能减少 OOM。</li>
+<li>代价：系统行为会受运行时波动影响，解释成本更高。</li>
+</ul>
+<h3 id="Auto-Tune：把反馈变成下一轮决策"><a href="#Auto-Tune：把反馈变成下一轮决策" class="headerlink" title="Auto Tune：把反馈变成下一轮决策"></a>Auto Tune：把反馈变成下一轮决策</h3><p>Auto Tune 是内存仲裁的自适应校正机制，用 runtime feedback 和历史画像修正额度决策。</p>
+<p>短期看，它根据运行时内存压力调整 out-of-control，让系统在风险升高时更保守，在风险解除后逐步释放保守余量。长期看，它可以记录 SQL 或 root pool 的历史内存画像，用于改善下一次执行的额度预估，减少反复扩容和仲裁。</p>
+<p>这不是新的仲裁模式，而是让仲裁器从静态阈值走向自适应决策的能力。写这部分时需要区分当前实现和演进方向：运行时状态记录、历史画像和 soft limit 自动模式提供了框架，但不能把它描述成已经能完美预测所有 SQL 内存使用。</p>
+<h2 id="和-Resource-Group-的关系"><a href="#和-Resource-Group-的关系" class="headerlink" title="和 Resource Group 的关系"></a>和 Resource Group 的关系</h2><p>内存仲裁可以复用 Resource Group 的业务语义。</p>
+<p>当前更直接的用法，是复用 Resource Group 的业务优先级，让仲裁器在资源紧张时知道哪些 SQL 更应该被保护。</p>
+<p>从更长期的架构看，Resource Group 不应该只表达 CPU 或 RU，也可以逐步表达更完整的执行策略：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Resource Group</span><br><span class="line">├── CPU / RU 优先级</span><br><span class="line">├── 内存优先级</span><br><span class="line">├── 是否允许等待</span><br><span class="line">├── 是否倾向快速失败</span><br><span class="line">├── 是否允许落盘</span><br><span class="line">└── 后台任务隔离策略</span><br></pre></td></tr></table></figure>
+
+<p>这样用户配置的是业务意图，而不是每种资源的底层参数。</p>
+<p>需要区分当前能力和演进方向：当前重点是把业务优先级接入内存仲裁；是否允许等待、是否倾向快速失败、是否允许落盘、后台任务如何隔离，更适合作为统一执行资源管控平面的扩展能力。</p>
+<p>三档优先级是一个有意的简化。它的好处是配置简单、行为容易解释；风险是粒度偏粗。同一档里的 SQL 仍然可能互相竞争，LOW 在持续压力下可能长期等待或被取消，而 HIGH 如果被滥用，也会失去保护关键业务的意义。因此，Resource Group 接入内存仲裁后，应该被理解为“风险时的保护顺序”，而不是“按组隔离内存”的完整方案。</p>
+<p>例如：</p>
+<ul>
+<li>OLTP：高优先级，低延迟，内存不足时可以快速失败并重试。</li>
+<li>OLAP：中低优先级，可以等待，可以落盘。</li>
+<li>后台任务：低优先级，可以暂停或限速。</li>
+<li>管理任务：高优先级，可以预留额度。</li>
+</ul>
+<p>从这个角度看，内存仲裁不是孤立功能，而是 Resource Group 从“资源统计”走向“执行调度”的一部分。</p>
+<h2 id="推广到执行引擎资源管控"><a href="#推广到执行引擎资源管控" class="headerlink" title="推广到执行引擎资源管控"></a>推广到执行引擎资源管控</h2><p>内存仲裁背后的模型可以推广到更多资源。</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">业务策略</span><br><span class="line">  -&gt; 准入判断</span><br><span class="line">  -&gt; 资源账户</span><br><span class="line">  -&gt; 全局仲裁</span><br><span class="line">  -&gt; runtime feedback</span><br><span class="line">  -&gt; 回收动作</span><br><span class="line">  -&gt; 可观测性</span><br></pre></td></tr></table></figure>
+
+<p>不同资源可以套用类似模型：</p>
+<ul>
+<li>内存：额度、资源池、GC、取消、强制终止、落盘。</li>
+<li>CPU：优先级、让出执行、限速。</li>
+<li>IO：队列、限速、准入。</li>
+<li>网络：反压、流控。</li>
+<li>临时磁盘：落盘额度、临时空间预算。</li>
+<li>后台任务：暂停、恢复、低优先级调度。</li>
+</ul>
+<p>内存是最适合作为起点的资源，因为它最容易导致进程不可用，也最难靠操作系统自然调度解决。</p>
+<h2 id="可观测性"><a href="#可观测性" class="headerlink" title="可观测性"></a>可观测性</h2><p>内存仲裁必须可解释。否则用户只会看到 SQL 被取消或强制终止，却不知道为什么。</p>
+<p>至少需要观察这些信息：</p>
+<ul>
+<li>当前仲裁模式。</li>
+<li>已分配额度、可用额度、风险空间。</li>
+<li>等待额度的 SQL 数量。</li>
+<li>root pool 数量。</li>
+<li>取消、强制终止、GC 次数。</li>
+<li>SQL 等待内存仲裁的耗时。</li>
+<li>运行时堆内存和逻辑额度之间的比例。</li>
+<li>soft limit 与实例内存上限的关系。</li>
+</ul>
+<p>这些信息可以帮助判断：</p>
+<ul>
+<li>是整体内存不足，还是某类 SQL 消耗异常？</li>
+<li>是 soft limit 太保守，还是负载本身太重？</li>
+<li>是低优先级 SQL 被正常回收，还是关键 SQL 也受影响？</li>
+<li>是应该调大资源、降低并发，还是调整 Resource Group？</li>
+</ul>
+<h2 id="主要取舍总结"><a href="#主要取舍总结" class="headerlink" title="主要取舍总结"></a>主要取舍总结</h2><h3 id="稳定性-vs-利用率"><a href="#稳定性-vs-利用率" class="headerlink" title="稳定性 vs 利用率"></a>稳定性 vs 利用率</h3><p>系统会预留安全空间，不会把全部内存都分给 SQL。</p>
+<ul>
+<li>收益：降低 OOM 和 GC 风险。</li>
+<li>代价：极限内存利用率下降。</li>
+</ul>
+<h3 id="快速失败-vs-成功率"><a href="#快速失败-vs-成功率" class="headerlink" title="快速失败 vs 成功率"></a>快速失败 vs 成功率</h3><p>快速失败策略会让 SQL 更早失败。</p>
+<ul>
+<li>收益：避免无界等待，降低尾延迟。</li>
+<li>代价：更依赖上层重试。</li>
+</ul>
+<h3 id="优先级保护-vs-公平性"><a href="#优先级保护-vs-公平性" class="headerlink" title="优先级保护 vs 公平性"></a>优先级保护 vs 公平性</h3><p>PRIORITY 模式保护高优先级业务。</p>
+<ul>
+<li>收益：关键 SQL 更稳定。</li>
+<li>代价：低优先级 SQL 可能更容易失败。</li>
+</ul>
+<h3 id="三档优先级-vs-细粒度隔离"><a href="#三档优先级-vs-细粒度隔离" class="headerlink" title="三档优先级 vs 细粒度隔离"></a>三档优先级 vs 细粒度隔离</h3><p>当前 Resource Group 优先级只有 LOW、MEDIUM、HIGH 三档。</p>
+<ul>
+<li>收益：配置简单，用户容易理解，仲裁器也容易做出稳定决策。</li>
+<li>代价：同档内仍然会竞争；如果 HIGH 被滥用，优先级保护会退化；如果 LOW 长期承压，需要依赖等待策略、重试策略和可观测性来解释。</li>
+</ul>
+<h3 id="全局控制-vs-热路径开销"><a href="#全局控制-vs-热路径开销" class="headerlink" title="全局控制 vs 热路径开销"></a>全局控制 vs 热路径开销</h3><p>全局仲裁能做更强的控制，但不能参与每一次小内存分配。</p>
+<ul>
+<li>收益：实例级资源调度能力更强。</li>
+<li>代价：需要轻量路径来控制开销，因此精度不是绝对的。</li>
+</ul>
+<h3 id="await-free-pool-vs-root-pool"><a href="#await-free-pool-vs-root-pool" class="headerlink" title="await-free pool vs root pool"></a>await-free pool vs root pool</h3><p>await-free pool 适合解析、编译和执行阶段的小额度增长，root pool 适合执行阶段持续增长、需要等待或回收的内存。</p>
+<ul>
+<li>收益：短生命周期内存和小额度增长也能纳入全局额度视野，同时避免过早进入普通等待队列。</li>
+<li>代价：需要判断什么时候从 await-free pool 升级到 root pool；升级太早会增加调度开销，升级太晚会增加 out-of-control 压力。</li>
+</ul>
+<h3 id="buffer-vs-并发度"><a href="#buffer-vs-并发度" class="headerlink" title="buffer vs 并发度"></a>buffer vs 并发度</h3><p>buffer 和 privileged budget 用于避免所有 root pool 同时等待导致系统无法回收。</p>
+<ul>
+<li>收益：极端压力下仍能推进取消、回收和退出流程，降低全局卡死风险。</li>
+<li>代价：会保留一部分不可分配空间；压力过大时并发度可能下降。</li>
+</ul>
+<h3 id="runtime-feedback-vs-可预测性"><a href="#runtime-feedback-vs-可预测性" class="headerlink" title="runtime feedback vs 可预测性"></a>runtime feedback vs 可预测性</h3><p>引入运行时内存可以更好地保护进程。</p>
+<ul>
+<li>收益：能处理未追踪内存和 GC 滞后。</li>
+<li>代价：决策会受到历史状态和运行时波动影响。</li>
+</ul>
+<h3 id="Auto-Tune-vs-可解释性"><a href="#Auto-Tune-vs-可解释性" class="headerlink" title="Auto Tune vs 可解释性"></a>Auto Tune vs 可解释性</h3><p>Auto Tune 用 runtime feedback 和历史画像修正额度决策。</p>
+<ul>
+<li>收益：额度边界可以随负载变化自适应，减少固定阈值带来的误判。</li>
+<li>代价：用户需要更多可观测性才能理解为什么同一类 SQL 在不同时间拿到的额度不同。</li>
+</ul>
+<h3 id="out-of-control-估算-vs-决策准确性"><a href="#out-of-control-估算-vs-决策准确性" class="headerlink" title="out-of-control 估算 vs 决策准确性"></a>out-of-control 估算 vs 决策准确性</h3><p>out-of-control 是仲裁器对风险空间的估算，不是一个可以精确计算的物理量。</p>
+<ul>
+<li>收益：把未追踪内存、GC 滞后和 soft limit 都纳入统一安全边界。</li>
+<li>代价：估算偏差会直接影响 SQL 成功率和实例稳定性。</li>
+</ul>
+<h2 id="风险"><a href="#风险" class="headerlink" title="风险"></a>风险</h2><ul>
+<li>如果所有 SQL 都配置成高优先级，优先级调度会失效。</li>
+<li>如果 soft limit 太低，SQL 会过早失败，资源利用不足。</li>
+<li>如果 soft limit 太高，仍可能出现 GC 抖动或 OOM 风险。</li>
+<li>如果 SQL 收到取消或强制终止后不能及时退出，内存释放会滞后。</li>
+<li>如果未追踪内存长期偏高，逻辑额度的调度效果会下降。</li>
+</ul>
+<h2 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h2><p>内存仲裁的本质，不是让系统更会强制终止 SQL，而是让执行引擎在资源紧张时有明确的决策顺序。</p>
+<p>它把问题从：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">谁用了最多内存？</span><br></pre></td></tr></table></figure>
+
+<p>推进到：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">系统还能不能继续分配？</span><br><span class="line">应该优先保护谁？</span><br><span class="line">什么时候应该等待、取消、回收或强制终止？</span><br></pre></td></tr></table></figure>
+
+<p>这就是执行引擎资源管控的核心。</p>
+<p>正常情况下，内存仲裁应该尽量少打扰 SQL 执行；资源紧张时，它必须足够强硬，保护 TiDB 实例不被单个或一组 SQL 拖垮。</p>
+<p>这套机制中最关键的难点，是在不精确知道所有内存归属的情况下，仍然做出足够保守但不过度保守的分配决策。out-of-control 的估算，就是这个难点的集中体现。</p>
+<p>最终目标是形成一套统一的执行资源管控平面：业务策略决定资源优先级，执行引擎负责准入和调度，runtime feedback 负责校正真实状态，可观测性负责解释系统决策。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/PingCAP/" rel="tag"># PingCAP</a>
+              <a href="/tags/Database/" rel="tag"># Database</a>
+              <a href="/tags/HTAP/" rel="tag"># HTAP</a>
+              <a href="/tags/TiDB/" rel="tag"># TiDB</a>
+              <a href="/tags/Memory/" rel="tag"># Memory</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2025/01/24/system/fd-leak-debug/" rel="prev" title="记一次 FD 泄漏问题黑盒排查">
+                  <i class="fa fa-chevron-left"></i> 记一次 FD 泄漏问题黑盒排查
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+
+<div class="copyright">
+  &copy; 
+  <span itemprop="copyrightYear">2026</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">TONG, Zhigao</span>
+</div>
+
+    </div>
+  </footer>
+
+  
+  <script src="/lib/animejs/lib/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/schemes/muse.js"></script><script src="/js/next-boot.js"></script>
+
+  
+<script src="/lib/hexo-generator-searchdb/dist/search.js" integrity="sha256-vXZMYLEqsROAXkEw93GGIvaB2ab+QW6w3+1ahD9nXXA=" crossorigin="anonymous"></script>
+<script src="/js/third-party/search/local-search.js"></script>
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>
