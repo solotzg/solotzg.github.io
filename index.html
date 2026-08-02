@@ -248,7 +248,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2026-07-03 17:14:03" itemprop="dateModified" datetime="2026-07-03T17:14:03+08:00">2026-07-03</time>
+      <time title="Modified: 2026-08-02 19:18:37" itemprop="dateModified" datetime="2026-08-02T19:18:37+08:00">2026-08-02</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -270,7 +270,7 @@
     
     
     <div class="post-body" itemprop="articleBody">
-          <p>数据库执行引擎的内存管理，真正难点不在于统计单条 SQL 用了多少内存，而在于当多个 SQL、后台任务和运行时系统共同竞争实例内存时，如何在 OOM 之前做出可解释的全局决策。传统“先分配、后统计、超限再杀 SQL”的方式处理得太晚，难以表达业务优先级，也无法覆盖逻辑内存与真实进程内存之间的偏差。本文围绕 TiDB 执行引擎的内存仲裁模式，讨论稳定性、利用率、公平性和优先级保护之间的设计取舍。</p>
+          <p>数据库执行引擎的内存管理，真正难点不在于统计单条 SQL 用了多少内存，而在于当多个 SQL、后台任务和运行时系统共同竞争实例内存时，如何在 OOM 之前做出可解释的全局决策。传统“先分配、后统计、超限再杀 SQL”的方式处理得太晚，难以表达业务优先级，也无法覆盖逻辑内存与真实进程内存之间的偏差。本文围绕 TiDB 执行引擎的<a target="_blank" rel="noopener" href="https://github.com/pingcap/tidb/issues/58194">全局内存仲裁机制</a>，讨论稳定性、利用率、公平性和优先级保护之间的设计取舍。</p>
           <!--noindex-->
             <div class="post-button">
               <a class="btn" href="/2025/04/16/pingcap/execution-engine-memory-arbitration/#more" rel="contents">

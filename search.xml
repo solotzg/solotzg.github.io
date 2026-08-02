@@ -5682,7 +5682,7 @@
   <entry>
     <title>数据库执行引擎的内存仲裁模式：从 OOM 保护到资源管控</title>
     <url>/2025/04/16/pingcap/execution-engine-memory-arbitration/</url>
-    <content><![CDATA[<p>数据库执行引擎的内存管理，真正难点不在于统计单条 SQL 用了多少内存，而在于当多个 SQL、后台任务和运行时系统共同竞争实例内存时，如何在 OOM 之前做出可解释的全局决策。传统“先分配、后统计、超限再杀 SQL”的方式处理得太晚，难以表达业务优先级，也无法覆盖逻辑内存与真实进程内存之间的偏差。本文围绕 TiDB 执行引擎的内存仲裁模式，讨论稳定性、利用率、公平性和优先级保护之间的设计取舍。</p>
+    <content><![CDATA[<p>数据库执行引擎的内存管理，真正难点不在于统计单条 SQL 用了多少内存，而在于当多个 SQL、后台任务和运行时系统共同竞争实例内存时，如何在 OOM 之前做出可解释的全局决策。传统“先分配、后统计、超限再杀 SQL”的方式处理得太晚，难以表达业务优先级，也无法覆盖逻辑内存与真实进程内存之间的偏差。本文围绕 TiDB 执行引擎的<a href="https://github.com/pingcap/tidb/issues/58194">全局内存仲裁机制</a>，讨论稳定性、利用率、公平性和优先级保护之间的设计取舍。</p>
 <span id="more"></span>
 <h2 id="本文要解决的问题"><a href="#本文要解决的问题" class="headerlink" title="本文要解决的问题"></a>本文要解决的问题</h2><p>数据库执行引擎中，内存管理面临的难题是：</p>
 <ul>
@@ -5703,18 +5703,14 @@
 <li>所有 SQL 在全局内存风险面前几乎是同一类，业务优先级很难体现。</li>
 </ul>
 <p>所以，仅靠事后强制终止内存使用最多的 SQL，不能解决执行引擎的资源竞争问题。我们需要在 SQL 继续扩大内存占用之前，就进行全局判断。</p>
-<h2 id="设计目标"><a href="#设计目标" class="headerlink" title="设计目标"></a>设计目标</h2><h3 id="目标"><a href="#目标" class="headerlink" title="目标"></a>目标</h3><ul>
-<li>保障 TiDB 实例内存安全，避免 OOM。</li>
-<li>减少极端内存压力下的 GC 抖动。</li>
-<li>让 SQL 因内存不足而失败时，原因更明确、更可解释。</li>
-<li>支持按业务优先级调度内存资源。</li>
-<li>在内存充足时保持低开销，不影响普通小查询。</li>
-<li>为后续更统一的执行引擎资源管控打基础。</li>
-</ul>
-<h2 id="核心思路：先申请额度，再继续用内存"><a href="#核心思路：先申请额度，再继续用内存" class="headerlink" title="核心思路：先申请额度，再继续用内存"></a>核心思路：先申请额度，再继续用内存</h2><p>内存仲裁的核心变化是：</p>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Before:</span><br><span class="line"></span><br><span class="line">先分配内存 -&gt; 再统计 -&gt; 超限后强制终止</span><br><span class="line"></span><br><span class="line">After:</span><br><span class="line"></span><br><span class="line">先申请内存额度 -&gt; 由全局仲裁器判断 -&gt; 再继续执行</span><br></pre></td></tr></table></figure>
+<h2 id="核心思路：在可控路径上先申请额度"><a href="#核心思路：在可控路径上先申请额度" class="headerlink" title="核心思路：在可控路径上先申请额度"></a>核心思路：在可控路径上先申请额度</h2><p>内存仲裁的核心变化是：</p>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Before:</span><br><span class="line"></span><br><span class="line">先分配内存 -&gt; 再统计 -&gt; 超限后强制终止</span><br><span class="line"></span><br><span class="line">After:</span><br><span class="line"></span><br><span class="line">预估或报告内存增长</span><br><span class="line">  -&gt; 检查并补充逻辑额度</span><br><span class="line">  -&gt; 获得额度后继续执行</span><br></pre></td></tr></table></figure>
 
-<p>这里的“额度”可以理解为逻辑内存预算。SQL 不一定真的马上分配这么多物理内存，但它需要先向系统声明：我接下来可能需要更多内存。</p>
+<p>这里的“额度”可以理解为逻辑内存预算，“先申请”是一项执行代码需要主动遵守的逻辑协议，不是对所有物理内存分配的统一拦截。SQL 不一定真的马上分配这么多物理内存，但它需要先向系统声明：我接下来可能需要更多内存，以此来获得较强的事前控制。</p>
+<p>如果代码在对象创建后才报告内存，或者相关内存没有接入追踪系统，仲裁器就无法阻止这次物理分配。它只能在后续额度申请或运行时内存压力升高时进行补救。</p>
+<p>因此，这套机制管理的是数据库内部发放的逻辑额度。它没有侵入 Go 内存分配器，也不能自动覆盖运行时、第三方库和所有后台任务的内存。</p>
+<p>操作系统层面的“申请成功”也不等于物理内存已经安全可用。以 Linux 为例，<code>malloc</code> 或 <code>mmap</code> 可能只获得虚拟地址空间；只有程序实际访问相应页面时，内核才需要建立物理映射。在启用 Overcommit 时，系统接受的虚拟内存申请还可能超过当前物理内存能力。</p>
+<p>所以，逻辑额度、runtime 统计和操作系统物理内存是三个不同层次。数据库仲裁器主要控制第一个层次，并通过运行时指标观察第二个层次，最终仍需要为操作系统层面的偏差保留安全空间。</p>
 <p>全局仲裁器收到申请后，会根据当前实例状态做决定：</p>
 <ul>
 <li>内存充足：允许申请。</li>
@@ -5731,13 +5727,14 @@
 
 <p>下图表示 TiDB 内存仲裁模式的总体架构</p>
 <p><img src="https://raw.githubusercontent.com/pingcap/tidb/c2e1dfa992795e778260aa03da52f632742feacf/docs/design/imgs/mem-arbitrator.png" alt="Memory arbitrator architecture"></p>
-<h3 id="内存追踪器（Memory-Tracker）：追踪统计入口"><a href="#内存追踪器（Memory-Tracker）：追踪统计入口" class="headerlink" title="内存追踪器（Memory Tracker）：追踪统计入口"></a>内存追踪器（Memory Tracker）：追踪统计入口</h3><p>执行器、算子、编译器、优化器仍然通过内存追踪器记录内存变化。</p>
-<p>这样做的好处是：</p>
+<h3 id="内存追踪器（Memory-Tracker）：逻辑计量入口"><a href="#内存追踪器（Memory-Tracker）：逻辑计量入口" class="headerlink" title="内存追踪器（Memory Tracker）：逻辑计量入口"></a>内存追踪器（Memory Tracker）：逻辑计量入口</h3><p>执行阶段的算子通过 Memory Tracker 报告内存增长和释放。解析、编译阶段则主要使用基于 SQL 复杂度的额度估算，当前还不能精确追踪所有临时对象。</p>
+<p>Memory Tracker 提供任务归属和使用量，但它不是物理内存分配器。一次计量调用发生在对象创建之前还是之后，取决于具体代码路径。</p>
+<p>因此，Memory Tracker 同时承担两种作用：</p>
 <ul>
-<li>不需要让所有算子直接感知全局仲裁器。</li>
-<li>保留已有的 SQL 内存统计和诊断能力。</li>
-<li>让内存仲裁可以逐步接入，而不是重写执行器内存管理。</li>
+<li>对已经发生的内存变化进行计量。</li>
+<li>在正确接入的路径上，触发额度检查和全局仲裁。</li>
 </ul>
+<p>这套设计可以复用已有的 SQL 内存统计能力，但事前控制的覆盖范围取决于各执行模块的接入方式。</p>
 <h3 id="内存资源池（Memory-Resource-Pool）：给-SQL-建资源账户"><a href="#内存资源池（Memory-Resource-Pool）：给-SQL-建资源账户" class="headerlink" title="内存资源池（Memory Resource Pool）：给 SQL 建资源账户"></a>内存资源池（Memory Resource Pool）：给 SQL 建资源账户</h3><p>内存资源池可以理解为 SQL 或任务的内存账户。</p>
 <p>它记录这个任务已经获得了多少额度、用了多少额度、还能不能继续扩容。当 SQL 的内存使用变大时，它不是直接无限增长，而是通过自己的内存账户向上申请更多额度。</p>
 <p>这一层解决的是“内存归谁”的问题。它内部可以分成两类路径：</p>
@@ -5745,10 +5742,15 @@
 <li>root pool（执行内存账户）：用于执行阶段持续增长、可能需要等待或回收的内存。</li>
 <li>await-free pool（快速额度池）：用于短生命周期内存和小额度增长。</li>
 </ul>
-<h4 id="await-free-pool：短生命周期内存的快速路径"><a href="#await-free-pool：短生命周期内存的快速路径" class="headerlink" title="await-free pool：短生命周期内存的快速路径"></a>await-free pool：短生命周期内存的快速路径</h4><p>不是所有内存使用都适合进入完整的 root pool 仲裁流程。</p>
-<p>解析、编译这类阶段生命周期短，内存使用更多依赖估算。如果它们每次都进入普通等待队列，仲裁器会承受不必要的调度开销。因此当前 TiDB 会按 SQL 复杂度估算一段临时额度，通过 await-free pool 占用，阶段结束后释放。</p>
-<p>执行阶段也会先使用 await-free pool 的小额度路径。当 SQL 内存增长超过小额度阈值，或者 await-free pool 无法继续补充额度时，SQL 才升级到 root pool，进入完整的等待、回收和优先级仲裁流程。</p>
-<p>await-free pool 不是绕过仲裁。它仍然受全局额度约束，只是不进入执行阶段的 root pool 普通等待队列。这个设计把短生命周期内存和小额度增长纳入全局视野，同时避免热路径被过度调度。</p>
+<h4 id="await-free-pool：短生命周期内存的快速路径"><a href="#await-free-pool：短生命周期内存的快速路径" class="headerlink" title="await-free pool：短生命周期内存的快速路径"></a>await-free pool：短生命周期内存的快速路径</h4><p>await-free pool 主要服务两类场景：</p>
+<ul>
+<li>解析、编译等短生命周期阶段，根据 SQL 复杂度预估一段临时额度。</li>
+<li>执行阶段尚未超过小额度阈值的内存增长。</li>
+</ul>
+<p>这两类场景的控制强度并不完全相同。</p>
+<p>解析和编译阶段会预估额度，并在实例进入内存风险时等待或终止；但 await-free pool 补充额度失败，并不一定直接中断当前解析或编译。因此，它更接近轻量计量和风险入口，不应理解成严格的内存准入。</p>
+<p>执行阶段接入 Memory Tracker 后，先使用 await-free pool 提供的小额度。当使用量超过阈值（例如全局内存上限的1&#x2F;1000），或者快速额度无法继续补充时，SQL 会升级到 root pool，进入完整仲裁。</p>
+<p>await-free pool 仍然计入实例的逻辑额度，但它避免了每次小额增长都触发完整仲裁。</p>
 <h3 id="全局内存仲裁器（Global-Memory-Arbitrator）：做实例级决策"><a href="#全局内存仲裁器（Global-Memory-Arbitrator）：做实例级决策" class="headerlink" title="全局内存仲裁器（Global Memory Arbitrator）：做实例级决策"></a>全局内存仲裁器（Global Memory Arbitrator）：做实例级决策</h3><p>全局内存仲裁器是实例级决策者。每个 TiDB 实例有一个仲裁器。</p>
 <p>它负责回答：</p>
 <ul>
@@ -5774,29 +5776,24 @@
 <p>这个公式看起来合理，但会漏掉一大块风险：已经在进程里、但不在 SQL 逻辑额度里的内存。它们可能来自 GC 滞后，也可能来自未追踪对象，还可能来自系统后台任务。</p>
 <p>这意味着系统需要为“无法安全继续分配的风险空间”建模。这个风险空间在后文称为 out-of-control（失控风险空间）。</p>
 <h2 id="一条-SQL-的执行流程"><a href="#一条-SQL-的执行流程" class="headerlink" title="一条 SQL 的执行流程"></a>一条 SQL 的执行流程</h2><p>简化后的流程如下：</p>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">SQL 开始执行</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">解析 / 编译阶段按 SQL 复杂度估算额度</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">通过 await-free pool 临时占用，阶段结束后释放</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">进入执行阶段</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">把 SQL 的内存追踪器接到内存仲裁上下文</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">小内存增长走快速路径</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">增长超过小额度阈值，或 await-free pool 补额度失败</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">SQL 进入 root pool</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">root pool 需要扩容时，向全局仲裁器申请额度</span><br></pre></td></tr></table></figure>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">SQL 开始执行</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">解析 / 编译阶段按 SQL 复杂度估算额度</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">通过 await-free pool 临时占用，阶段结束后释放</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">进入执行阶段</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">把 SQL 的内存追踪器接到内存仲裁上下文</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">小额度增长使用 await-free pool</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">增长超过小额度阈值，或 await-free pool 补额度失败</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">SQL 升级到独立 root pool</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">root pool 需要扩容时，向全局仲裁器申请额度</span><br></pre></td></tr></table></figure>
 
-<p>这里有一个重要取舍：不是每一次内存增长都进入全局仲裁。</p>
-<p>如果所有小对象分配都进入全局队列，仲裁器本身会成为性能瓶颈。所以当前设计保留了轻量路径：</p>
-<ul>
-<li>解析、编译这类短生命周期阶段通过 await-free pool 使用估算额度。</li>
-<li>执行阶段的小额度增长也先走 await-free pool。</li>
-<li>只有当增长超过小额度阈值，或者 await-free pool 不能继续补充额度时，才进入执行阶段的 root pool 仲裁。</li>
-</ul>
-<p>这个取舍牺牲了一点控制精度，换来正常路径的低开销。</p>
+<p>这里的关键取舍不是“要不要追踪小对象”，而是“小额增长是否需要立即触发完整仲裁”。</p>
+<p>Memory Tracker 仍然可以记录小额增长，但任务在已有额度内只需要更新本地或分片计数。只有额度不足、超过小额度阈值或需要创建 root pool 时，才发生更重的全局协调。</p>
+<p>这种方式把全局仲裁的粒度从单次对象变化提高到额度补充事件，在控制能力和执行开销之间取得平衡。</p>
 <h2 id="两种工作模式"><a href="#两种工作模式" class="headerlink" title="两种工作模式"></a>两种工作模式</h2><p>内存不足时，不同业务希望的行为不一样。有些系统希望尽快失败并重试；有些系统希望保护关键 SQL。因此仲裁器提供不同模式。</p>
-<h3 id="STANDARD-模式：简单公平的默认仲裁"><a href="#STANDARD-模式：简单公平的默认仲裁" class="headerlink" title="STANDARD 模式：简单公平的默认仲裁"></a>STANDARD 模式：简单公平的默认仲裁</h3><p>STANDARD 模式强调简单、公平、可解释。SQL 运行过程中动态申请内存额度；资源不足时，申请会按顺序等待。如果全局内存仍然不足，仲裁器才会让申请失败并取消对应 SQL。</p>
-<p>这个模式不表达业务优先级。它适合先建立一套全局内存准入和等待机制，再由上层重试或其他策略处理失败。</p>
+<h3 id="STANDARD-模式"><a href="#STANDARD-模式" class="headerlink" title="STANDARD 模式"></a>STANDARD 模式</h3><p>STANDARD 模式不区分业务优先级，额度申请按照 FIFO 顺序处理。申请方会同步等待本次仲裁结果；如果当前资源无法满足申请，仲裁器会取消尚未满足的额度申请，而不是保证 SQL 一直等待到资源自然释放。</p>
+<p>这种模式的主要特点是规则简单。它适合由上层负责重试的场景，但不适合表达关键业务保护关系。</p>
 <p>适合场景：</p>
 <ul>
 <li>希望行为简单、可预测。</li>
 <li>不需要区分业务优先级。</li>
-<li>可以接受 SQL 在资源不足时等待，或者最终失败后由上层重试。</li>
+<li>可以接受 SQL 在资源不足时失败，并由上层重试。</li>
 </ul>
 <p>取舍：</p>
 <ul>
-<li>好处：规则简单，同一类 SQL 之间更公平。</li>
-<li>代价：不能保护关键业务；资源紧张时可能增加等待时间。</li>
+<li>好处：规则简单，同类申请之间容易解释。</li>
+<li>代价：不能保护关键业务；资源不足时，等待中的多个申请可能一起被取消。</li>
 </ul>
 <h3 id="PRIORITY-模式：保护高优先级-SQL"><a href="#PRIORITY-模式：保护高优先级-SQL" class="headerlink" title="PRIORITY 模式：保护高优先级 SQL"></a>PRIORITY 模式：保护高优先级 SQL</h3><p>PRIORITY 模式下，SQL 会带有内存优先级。优先级可以来自 Resource Group（资源组）。</p>
 <p>这里需要注意：资源组可以有多个，但当前内存仲裁消费的是资源组上的三档优先级：LOW、MEDIUM、HIGH。也就是说，它表达的是资源紧张时的保护顺序，不是完整的内存配额、保底或隔离模型。</p>
@@ -5818,7 +5815,7 @@
 <ul>
 <li>仲裁模式决定资源不足时按公平顺序处理，还是按业务优先级处理。</li>
 <li>soft limit 决定全局内存额度边界，是安全性和利用率之间的调节旋钮。</li>
-<li>query reserved 用于提高单个 SQL 的隔离性，减少执行过程中多次申请额度的开销。</li>
+<li>手动预先订阅足量份额可以提高单个 SQL 的隔离性，减少执行过程中多次申请额度的开销。</li>
 <li>快速失败策略用于低延迟业务，让 SQL 不在当前 TiDB 节点长时间等待，而是交给上层重试。</li>
 </ul>
 <p>这部分在架构上最重要的不是变量名字，而是用户能把业务意图表达给执行引擎。</p>
@@ -5918,35 +5915,8 @@
 <h3 id="Auto-Tune：把反馈变成下一轮决策"><a href="#Auto-Tune：把反馈变成下一轮决策" class="headerlink" title="Auto Tune：把反馈变成下一轮决策"></a>Auto Tune：把反馈变成下一轮决策</h3><p>Auto Tune 是内存仲裁的自适应校正机制，用 runtime feedback 和历史画像修正额度决策。</p>
 <p>短期看，它根据运行时内存压力调整 out-of-control，让系统在风险升高时更保守，在风险解除后逐步释放保守余量。长期看，它可以记录 SQL 或 root pool 的历史内存画像，用于改善下一次执行的额度预估，减少反复扩容和仲裁。</p>
 <p>这不是新的仲裁模式，而是让仲裁器从静态阈值走向自适应决策的能力。写这部分时需要区分当前实现和演进方向：运行时状态记录、历史画像和 soft limit 自动模式提供了框架，但不能把它描述成已经能完美预测所有 SQL 内存使用。</p>
-<h2 id="和-Resource-Group-的关系"><a href="#和-Resource-Group-的关系" class="headerlink" title="和 Resource Group 的关系"></a>和 Resource Group 的关系</h2><p>内存仲裁可以复用 Resource Group 的业务语义。</p>
-<p>当前更直接的用法，是复用 Resource Group 的业务优先级，让仲裁器在资源紧张时知道哪些 SQL 更应该被保护。</p>
-<p>从更长期的架构看，Resource Group 不应该只表达 CPU 或 RU，也可以逐步表达更完整的执行策略：</p>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">Resource Group</span><br><span class="line">├── CPU / RU 优先级</span><br><span class="line">├── 内存优先级</span><br><span class="line">├── 是否允许等待</span><br><span class="line">├── 是否倾向快速失败</span><br><span class="line">├── 是否允许落盘</span><br><span class="line">└── 后台任务隔离策略</span><br></pre></td></tr></table></figure>
-
-<p>这样用户配置的是业务意图，而不是每种资源的底层参数。</p>
-<p>需要区分当前能力和演进方向：当前重点是把业务优先级接入内存仲裁；是否允许等待、是否倾向快速失败、是否允许落盘、后台任务如何隔离，更适合作为统一执行资源管控平面的扩展能力。</p>
-<p>三档优先级是一个有意的简化。它的好处是配置简单、行为容易解释；风险是粒度偏粗。同一档里的 SQL 仍然可能互相竞争，LOW 在持续压力下可能长期等待或被取消，而 HIGH 如果被滥用，也会失去保护关键业务的意义。因此，Resource Group 接入内存仲裁后，应该被理解为“风险时的保护顺序”，而不是“按组隔离内存”的完整方案。</p>
-<p>例如：</p>
-<ul>
-<li>OLTP：高优先级，低延迟，内存不足时可以快速失败并重试。</li>
-<li>OLAP：中低优先级，可以等待，可以落盘。</li>
-<li>后台任务：低优先级，可以暂停或限速。</li>
-<li>管理任务：高优先级，可以预留额度。</li>
-</ul>
-<p>从这个角度看，内存仲裁不是孤立功能，而是 Resource Group 从“资源统计”走向“执行调度”的一部分。</p>
-<h2 id="推广到执行引擎资源管控"><a href="#推广到执行引擎资源管控" class="headerlink" title="推广到执行引擎资源管控"></a>推广到执行引擎资源管控</h2><p>内存仲裁背后的模型可以推广到更多资源。</p>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">业务策略</span><br><span class="line">  -&gt; 准入判断</span><br><span class="line">  -&gt; 资源账户</span><br><span class="line">  -&gt; 全局仲裁</span><br><span class="line">  -&gt; runtime feedback</span><br><span class="line">  -&gt; 回收动作</span><br><span class="line">  -&gt; 可观测性</span><br></pre></td></tr></table></figure>
-
-<p>不同资源可以套用类似模型：</p>
-<ul>
-<li>内存：额度、资源池、GC、取消、强制终止、落盘。</li>
-<li>CPU：优先级、让出执行、限速。</li>
-<li>IO：队列、限速、准入。</li>
-<li>网络：反压、流控。</li>
-<li>临时磁盘：落盘额度、临时空间预算。</li>
-<li>后台任务：暂停、恢复、低优先级调度。</li>
-</ul>
-<p>内存是最适合作为起点的资源，因为它最容易导致进程不可用，也最难靠操作系统自然调度解决。</p>
+<h2 id="推广到执行引擎资源管控"><a href="#推广到执行引擎资源管控" class="headerlink" title="推广到执行引擎资源管控"></a>推广到执行引擎资源管控</h2><p>内存仲裁所使用的“业务策略、资源账户、全局决策、反馈校正和回收动作”也可以推广到 CPU、IO、网络和临时磁盘等资源。</p>
+<p>不过，不同资源的回收方式并不相同：CPU 可以限速和让出执行，IO 可以排队，内存则必须等待对象释放或终止任务。统一资源管控应复用决策框架，而不是假设所有资源都能使用同一种仲裁算法。</p>
 <h2 id="可观测性"><a href="#可观测性" class="headerlink" title="可观测性"></a>可观测性</h2><p>内存仲裁必须可解释。否则用户只会看到 SQL 被取消或强制终止，却不知道为什么。</p>
 <p>至少需要观察这些信息：</p>
 <ul>
@@ -6033,7 +6003,7 @@
 <p>这就是执行引擎资源管控的核心。</p>
 <p>正常情况下，内存仲裁应该尽量少打扰 SQL 执行；资源紧张时，它必须足够强硬，保护 TiDB 实例不被单个或一组 SQL 拖垮。</p>
 <p>这套机制中最关键的难点，是在不精确知道所有内存归属的情况下，仍然做出足够保守但不过度保守的分配决策。out-of-control 的估算，就是这个难点的集中体现。</p>
-<p>最终目标是形成一套统一的执行资源管控平面：业务策略决定资源优先级，执行引擎负责准入和调度，runtime feedback 负责校正真实状态，可观测性负责解释系统决策。</p>
+<p>最终目标是形成一套统一的执行资源管控平面：业务策略决定资源优先级，执行引擎负责准入和调度，runtime feedback 负责校正逻辑模型，可观测性负责解释系统决策。</p>
 ]]></content>
       <categories>
         <category>PingCAP</category>
