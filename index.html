@@ -432,7 +432,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2023-10-12 16:37:34" itemprop="dateModified" datetime="2023-10-12T16:37:34+08:00">2023-10-12</time>
+      <time title="Modified: 2026-08-28 19:00:59" itemprop="dateModified" datetime="2026-08-28T19:00:59+08:00">2026-08-28</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -457,7 +457,9 @@
           <blockquote>
 <p>What good can using exceptions do for me? The basic answer is: Using exceptions for error handling makes your code simpler, cleaner, and less likely to miss errors. But what’s wrong with “good old errno and if-statements”? The basic answer is: Using those, your error handling and your normal code are closely intertwined. That way, your code gets messy and it becomes hard to ensure that you have dealt with all errors.</p>
 </blockquote>
+<p>—— <a target="_blank" rel="noopener" href="https://isocpp.org/wiki/faq/exceptions/1000">Standard C++ Exception FAQ</a></p>
 <p>由于 C++ 异常机制复杂的特性，编写异常安全的代码不是件轻松的事情。异常增强了语言的表达能力，但也带来了不可避免的开销。本文简单分析了 C++ 异常机制的实现原理，并总结相关注意事项。</p>
+<p>本文主要讨论 Linux&#x2F;ELF、System V AMD64 ABI、Itanium C++ ABI 下的实现，实验环境为 Clang 15。编译器、标准库、C++ ABI 运行时和 unwind 库是相互独立的组件；复现实验时还需要确认发行版、链接器及各运行库的具体实现和版本。其他平台和编译器的实现可能不同。</p>
           <!--noindex-->
             <div class="post-button">
               <a class="btn" href="/2023/09/04/system/cpp-exception/#more" rel="contents">
@@ -717,7 +719,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2023-10-12 16:37:34" itemprop="dateModified" datetime="2023-10-12T16:37:34+08:00">2023-10-12</time>
+      <time title="Modified: 2026-08-28 15:22:34" itemprop="dateModified" datetime="2026-08-28T15:22:34+08:00">2026-08-28</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -740,7 +742,7 @@
     
     <div class="post-body" itemprop="articleBody">
           <blockquote>
-<p>面向 <code>C艹</code>（aka <code>C++</code> or <code>CPP</code>）的开发规范一直都比较松散，各个组织包括个体总能在不轻易间把项目堆成 xxxx xxxxxxxx。</p>
+<p>C++ 提供了很大的工程自由度；如果缺少明确的依赖边界和持续度量，模板、头文件与编译单元的成本很容易随项目规模一起放大。</p>
 </blockquote>
 <p>随着工程规模增大，<a target="_blank" rel="noopener" href="https://github.com/pingcap/tiflash">TiFlash</a> 项目也逐渐开始暴露出这类问题：</p>
 <ul>
@@ -750,6 +752,11 @@
 <li>工程质量愈发难以控制</li>
 </ul>
 <p>本文旨在提供量化指标和参考方法用以优化 C++ 工程项目的编译流程。希望动员社区的力量，一起来优化 TiFlash 的工程质量。</p>
+<p>全文包含两条主线：</p>
+<ul>
+<li><strong>构建效率</strong>：time trace、模板实例化、头文件依赖、编译单元、PCH、PImpl 和 ccache。</li>
+<li><strong>产物运行性能</strong>：LTO、PGO、BOLT 和代码大页。这些技术通常会增加构建成本，目标不是缩短日常编译时间。</li>
+</ul>
           <!--noindex-->
             <div class="post-button">
               <a class="btn" href="/2022/06/01/system/cpp-compile-optimize/#more" rel="contents">
@@ -912,7 +919,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">Edited on</span>
-      <time title="Modified: 2022-12-05 12:33:18" itemprop="dateModified" datetime="2022-12-05T12:33:18+08:00">2022-12-05</time>
+      <time title="Modified: 2026-08-28 18:55:45" itemprop="dateModified" datetime="2026-08-28T18:55:45+08:00">2026-08-28</time>
     </span>
     <span class="post-meta-item">
       <span class="post-meta-item-icon">
@@ -935,7 +942,7 @@
     
     <div class="post-body" itemprop="articleBody">
           <p>PingCAP（aka <code>贵司</code>）自研了套部署工具 <a target="_blank" rel="noopener" href="https://github.com/pingcap/tiup">TiUP</a> 来取代早前使用的重型部署工具 <a target="_blank" rel="noopener" href="https://github.com/ansible/ansible">Ansible</a>。然而实际使用时，TiFlash 节点在打 patch 过程中出现过不符合预期的报错。后来发现，TiUP 打 patch 的操作并没有停进程，而是直接 <code>tar</code> 命令解压覆盖部署目录，原子性保障也是无从谈起。v6.0 版本前 TiFlash 部分模块包含动态加载 <code>共享库</code>（aka <code>动态库</code>）的行为，这类行为会被搜索路径下的库文件影响。如果存在某个时刻引入的模块相互不兼容，则直接影响程序的行为。</p>
-<p>因为是用 <code>tar</code> 命令解压覆盖，反而没有出现老生常谈的 <code>cp</code> 覆盖动态库引起 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Segmentation_fault">Segmentation fault</a> 的问题。</p>
+<p>因为当时使用的 <code>tar</code> 实现会先移除旧目录项再创建新文件，已经映射旧 Inode 的进程没有遇到 <code>cp</code> 原地截断共享库常见的 <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Segmentation_fault">Segmentation fault</a> 问题。但这并不意味着整个 patch 过程具备原子性：更新期间启动的新进程或再次执行 <code>dlopen()</code> 的线程，仍可能看到缺失、未写完或彼此不兼容的一组文件。</p>
 <p>正好借此整理下相关的几个问题：</p>
 <ul>
 <li>cp &#x2F; tar 命令是如何工作的？</li>
@@ -943,6 +950,12 @@
 <li>使用动态库要避开哪些坑？</li>
 <li>动态库有哪些额外的开销？</li>
 </ul>
+<p>结论先行：</p>
+<ul>
+<li>不要用 <code>cp</code> 原地覆盖正在被映射的共享库。</li>
+<li>单文件更新应在同一目录写完临时文件，再通过 <code>rename()</code> 原子替换目标；如需保证掉电后的持久性，还要同步文件和目录元数据。</li>
+<li>多个共享库必须作为整体保持兼容时，应发布到新的版本目录，完成校验后再原子切换入口软链接，而不是逐个覆盖。</li>
+<li>动态加载不等于符号隔离；稳定的 C ABI、最小导出符号集和明确的版本策略仍然是基础。
           <!--noindex-->
             <div class="post-button">
               <a class="btn" href="/2022/03/30/system/linux-dynamic-library/#more" rel="contents">
