@@ -5922,6 +5922,7 @@
     <url>/2025/04/16/pingcap/execution-engine-memory-arbitration/</url>
     <content><![CDATA[<p>数据库执行引擎的内存管理，真正难点不在于统计单条 SQL 用了多少内存，而在于当多个 SQL、后台任务和运行时系统共同竞争实例内存时，如何在 OOM 之前做出可解释的全局决策。传统“先分配、后统计、超限再杀 SQL”的方式处理得太晚，难以表达业务优先级，也无法覆盖逻辑内存与真实进程内存之间的偏差。本文围绕 TiDB 执行引擎的<a href="https://github.com/pingcap/tidb/issues/58194">全局内存仲裁机制</a>，讨论稳定性、利用率、公平性和优先级保护之间的设计取舍。</p>
 <span id="more"></span>
+<p><strong>内存回收机制</strong> 是相对抽象的概念，追踪式 GC（例如 Go runtime GC）是其中一种，其他系统也可能通过淘汰可重建缓存、清理对象池、重置 arena 或将临时数据溢写到磁盘（spill）来回收内存。</p>
 <h2 id="本文要解决的问题"><a href="#本文要解决的问题" class="headerlink" title="本文要解决的问题"></a>本文要解决的问题</h2><p>数据库执行引擎中，内存管理面临的难题是：</p>
 <ul>
 <li>当多个 SQL 同时增长内存时，系统应该让谁继续执行？</li>
@@ -6011,7 +6012,7 @@
 <p>因此，全局仲裁器不能简单地用下面这个公式做决策：</p>
 <figure class="highlight text"><table><tr><td class="code"><pre><span class="line">可分配额度 = 实例内存上限 - 已分配额度</span><br></pre></td></tr></table></figure>
 
-<p>这个公式看起来合理，但会漏掉一大块风险：已经在进程里、但不在 SQL 逻辑额度里的内存。它们可能来自 GC 滞后，也可能来自未追踪对象，还可能来自系统后台任务。</p>
+<p>这个公式看起来合理，但会漏掉一大块风险：已经在进程里、但不在 SQL 逻辑额度里的内存。它们可能来自 GC 滞后，也可能来自未追踪对象、allocator 保留的内存或系统后台任务。</p>
 <p>这意味着系统需要为“无法安全继续分配的风险空间”建模。这个风险空间在后文称为 out-of-control（失控风险空间）。</p>
 <h2 id="一条-SQL-的执行流程"><a href="#一条-SQL-的执行流程" class="headerlink" title="一条 SQL 的执行流程"></a>一条 SQL 的执行流程</h2><p>简化后的流程如下：</p>
 <figure class="highlight text"><table><tr><td class="code"><pre><span class="line">SQL 开始执行</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">解析 / 编译阶段按 SQL 复杂度估算额度</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">通过 await-free pool 临时占用，阶段结束后释放</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">进入执行阶段</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">把 SQL 的内存追踪器接到内存仲裁上下文</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">小额度增长使用 await-free pool</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">增长超过小额度阈值，或 await-free pool 补额度失败</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">SQL 升级到独立 root pool</span><br><span class="line">      |</span><br><span class="line">      v</span><br><span class="line">root pool 需要扩容时，向全局仲裁器申请额度</span><br></pre></td></tr></table></figure>
@@ -6070,7 +6071,7 @@
 <p>CANCEL 是调度行为，不一定表示实例已经危险。</p>
 <h3 id="KILL"><a href="#KILL" class="headerlink" title="KILL"></a>KILL</h3><p>KILL 是最后保护手段。只有当运行时内存已经进入危险区，并且 GC 或自然释放无法及时降低压力时，才应该强制终止正在运行的 SQL。</p>
 <p>这个区分很重要。否则所有内存不足都会变成强制终止，用户体验会很差，也很难解释。</p>
-<h2 id="out-of-control：风险空间的建模"><a href="#out-of-control：风险空间的建模" class="headerlink" title="out-of-control：风险空间的建模"></a>out-of-control：风险空间的建模</h2><p>out-of-control 指的是仲裁器不应该继续分配出去的那部分内存空间。它不一定都是“未追踪内存”，也包括因为 soft limit（软上限）、GC 滞后、运行时开销等原因需要保留的安全空间。</p>
+<h2 id="out-of-control：风险空间的建模"><a href="#out-of-control：风险空间的建模" class="headerlink" title="out-of-control：风险空间的建模"></a>out-of-control：风险空间的建模</h2><p>out-of-control 指的是仲裁器不应该继续分配出去的那部分内存空间。它不一定都是“未追踪内存”，也包括因为 soft limit（软上限）、GC 滞后、allocator 开销或其他运行时因素需要保留的安全空间。</p>
 <p>全局仲裁不能只看 SQL 内存追踪器统计出来的内存。真实进程内存还包括：</p>
 <ul>
 <li>Go 堆内存中等待 GC 的对象。</li>
@@ -6079,6 +6080,7 @@
 <li>运行时和堆外内存开销。</li>
 <li>缓存和后台任务。</li>
 </ul>
+<p>在采用缓存或对象池的系统里，还要区分“可回收”和“可立即回收”：可重建缓存可能可以淘汰，但正在使用、被固定或需要先写回的数据未必能立刻释放；allocator 归还对象后，进程 RSS 也可能暂时不下降。</p>
 <p>系统需要在硬限制下面留出安全空间，这个安全空间就是 out-of-control 估算的主要结果。</p>
 <p>换成仲裁器的分配模型，就是：</p>
 <figure class="highlight text"><table><tr><td class="code"><pre><span class="line">可安全分配额度 ~= 实例内存上限 - 已分配额度 - buffer - out-of-control</span><br></pre></td></tr></table></figure>
@@ -6087,7 +6089,7 @@
 <figure class="highlight text"><table><tr><td class="code"><pre><span class="line">实例内存上限</span><br><span class="line">├── 已分配额度</span><br><span class="line">├── 还能继续分配的额度</span><br><span class="line">├── 调度和回收需要的 buffer</span><br><span class="line">└── 不适合继续分配的 out-of-control</span><br></pre></td></tr></table></figure>
 
 <p>可以把 out-of-control 理解成几类风险的最大值：</p>
-<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">out-of-control =</span><br><span class="line">  max(</span><br><span class="line">    未追踪或难归属的内存,</span><br><span class="line">    运行时堆内存与逻辑额度的偏差,</span><br><span class="line">    soft limit 要求保留的空间,</span><br><span class="line">    历史风险状态给出的保守余量</span><br><span class="line">  )</span><br></pre></td></tr></table></figure>
+<figure class="highlight text"><table><tr><td class="code"><pre><span class="line">out-of-control =</span><br><span class="line">  max(</span><br><span class="line">    历史风险状态给出的保留空间，</span><br><span class="line">    soft limit 所需的保留空间,</span><br><span class="line">    未追踪或难归属的内存（运行时堆内存与逻辑额度的差值）,</span><br><span class="line">    ...</span><br><span class="line">  )</span><br></pre></td></tr></table></figure>
 
 <p>soft limit 是其中一个重要来源。它用来控制“最多分配多少额度给 SQL”，确保系统不会把硬限制全部暴露给执行层。</p>
 <p>下图展示了 TiDB 内存仲裁模式中 out-of-control、soft limit、未追踪内存和历史画像之间的关系。</p>
@@ -6127,31 +6129,32 @@
 </tr>
 </tbody></table>
 <p>因此，仲裁器的目标不是算出一个绝对准确的 out-of-control，而是在安全性和利用率之间找到一个能动态调整的边界。</p>
-<h2 id="runtime-feedback：逻辑额度之外的真实世界"><a href="#runtime-feedback：逻辑额度之外的真实世界" class="headerlink" title="runtime feedback：逻辑额度之外的真实世界"></a>runtime feedback：逻辑额度之外的真实世界</h2><p>逻辑额度和真实内存不是一回事。</p>
-<p>一个 SQL 可能只报告了一部分内存，但 Go 运行时里还有未释放对象；也可能 SQL 已经退出，但堆内存还没被 GC 回收。因此，仲裁器不能只看 SQL 的逻辑额度，还要看运行时内存。</p>
-<p>runtime feedback 主要用于回答：</p>
+<h2 id="运行时反馈：逻辑额度之外的真实世界"><a href="#运行时反馈：逻辑额度之外的真实世界" class="headerlink" title="运行时反馈：逻辑额度之外的真实世界"></a>运行时反馈：逻辑额度之外的真实世界</h2><p>逻辑额度和真实内存不是一回事。</p>
+<p>一个 SQL 可能只报告了一部分内存，但 Go 运行时里还有未释放对象；也可能 SQL 已经退出，但堆内存还没被回收。采用缓存或对象池的系统，则可能持有可淘汰或可复用的内存。因此，仲裁器不能只看 SQL 的逻辑额度，还要观察运行时内存使用状况。</p>
+<p>运行时反馈主要用于回答：</p>
 <ul>
 <li>当前堆内存是否已经很高？</li>
 <li>是否有大量未追踪内存？</li>
-<li>GC 是否能及时释放内存？</li>
+<li>回收机制能否及时释放或复用内存？</li>
 <li>逻辑额度和真实堆内存之间是否长期不匹配？</li>
+<li>当前有多少内存可回收，回收需要多长时间、会带来多大执行代价？</li>
 </ul>
-<p>也就是说，out-of-control 给出风险边界，runtime feedback 负责根据运行状态修正这个边界。</p>
+<p>也就是说，out-of-control 给出风险边界，运行时反馈负责根据实际运行状态修正这个边界。</p>
 <p>它的作用是把仲裁器从固定阈值判断变成闭环控制：</p>
 <ol>
 <li>先根据逻辑额度做分配。</li>
-<li>再观察真实堆内存是否按预期变化。</li>
+<li>再观察真实内存占用以及回收机制是否符合预期。</li>
 <li>如果堆内存压力明显高于额度预期，就扩大 out-of-control。</li>
 <li>如果风险解除，再逐步释放保守余量。</li>
 </ol>
 <p>这类控制一定不是完全精确的，但比固定阈值更能适应不同负载。</p>
-<p>引入 runtime feedback 的取舍是：</p>
+<p>引入运行时反馈的取舍是：</p>
 <ul>
 <li>好处：更接近真实进程状态，能减少 OOM。</li>
 <li>代价：系统行为会受运行时波动影响，解释成本更高。</li>
 </ul>
-<h3 id="Auto-Tune：把反馈变成下一轮决策"><a href="#Auto-Tune：把反馈变成下一轮决策" class="headerlink" title="Auto Tune：把反馈变成下一轮决策"></a>Auto Tune：把反馈变成下一轮决策</h3><p>Auto Tune 是内存仲裁的自适应校正机制，用 runtime feedback 和历史画像修正额度决策。</p>
-<p>短期看，它根据运行时内存压力调整 out-of-control，让系统在风险升高时更保守，在风险解除后逐步释放保守余量。长期看，它可以记录 SQL 或 root pool 的历史内存画像，用于改善下一次执行的额度预估，减少反复扩容和仲裁。</p>
+<h3 id="Auto-Tune：把反馈变成下一轮决策"><a href="#Auto-Tune：把反馈变成下一轮决策" class="headerlink" title="Auto Tune：把反馈变成下一轮决策"></a>Auto Tune：把反馈变成下一轮决策</h3><p>Auto Tune 是内存仲裁的自适应校正机制，用运行时反馈以及历史画像修正额度决策。</p>
+<p>短期看，它根据运行时内存压力调整 out-of-control，让系统在风险升高时更保守，在风险解除后逐步释放保守余量。TiDB 当前实现围绕 Go runtime 和 SQL 内存追踪数据工作；推广到其他执行引擎时，也可以把缓存淘汰量、内存池回收量和 spill 效果纳入反馈，并记录任务或资源池的历史画像，改善后续额度预估。</p>
 <p>这不是新的仲裁模式，而是让仲裁器从静态阈值走向自适应决策的能力。写这部分时需要区分当前实现和演进方向：运行时状态记录、历史画像和 soft limit 自动模式提供了框架，但不能把它描述成已经能完美预测所有 SQL 内存使用。</p>
 <h2 id="推广到执行引擎资源管控"><a href="#推广到执行引擎资源管控" class="headerlink" title="推广到执行引擎资源管控"></a>推广到执行引擎资源管控</h2><p>内存仲裁所使用的“业务策略、资源账户、全局决策、反馈校正和回收动作”也可以推广到 CPU、IO、网络和临时磁盘等资源。</p>
 <p>不过，不同资源的回收方式并不相同：CPU 可以限速和让出执行，IO 可以排队，内存则必须等待对象释放或终止任务。统一资源管控应复用决策框架，而不是假设所有资源都能使用同一种仲裁算法。</p>
@@ -6209,12 +6212,12 @@
 <li>收益：极端压力下仍能推进取消、回收和退出流程，降低全局卡死风险。</li>
 <li>代价：会保留一部分不可分配空间；压力过大时并发度可能下降。</li>
 </ul>
-<h3 id="runtime-feedback-vs-可预测性"><a href="#runtime-feedback-vs-可预测性" class="headerlink" title="runtime feedback vs 可预测性"></a>runtime feedback vs 可预测性</h3><p>引入运行时内存可以更好地保护进程。</p>
+<h3 id="运行时反馈-vs-可预测性"><a href="#运行时反馈-vs-可预测性" class="headerlink" title="运行时反馈 vs 可预测性"></a>运行时反馈 vs 可预测性</h3><p>引入运行时内存可以更好地保护进程。</p>
 <ul>
 <li>收益：能处理未追踪内存和 GC 滞后。</li>
 <li>代价：决策会受到历史状态和运行时波动影响。</li>
 </ul>
-<h3 id="Auto-Tune-vs-可解释性"><a href="#Auto-Tune-vs-可解释性" class="headerlink" title="Auto Tune vs 可解释性"></a>Auto Tune vs 可解释性</h3><p>Auto Tune 用 runtime feedback 和历史画像修正额度决策。</p>
+<h3 id="Auto-Tune-vs-可解释性"><a href="#Auto-Tune-vs-可解释性" class="headerlink" title="Auto Tune vs 可解释性"></a>Auto Tune vs 可解释性</h3><p>Auto Tune 用运行时反馈和历史画像修正额度决策。</p>
 <ul>
 <li>收益：额度边界可以随负载变化自适应，减少固定阈值带来的误判。</li>
 <li>代价：用户需要更多可观测性才能理解为什么同一类 SQL 在不同时间拿到的额度不同。</li>
@@ -6241,7 +6244,7 @@
 <p>这就是执行引擎资源管控的核心。</p>
 <p>正常情况下，内存仲裁应该尽量少打扰 SQL 执行；资源紧张时，它必须足够强硬，保护 TiDB 实例不被单个或一组 SQL 拖垮。</p>
 <p>这套机制中最关键的难点，是在不精确知道所有内存归属的情况下，仍然做出足够保守但不过度保守的分配决策。out-of-control 的估算，就是这个难点的集中体现。</p>
-<p>最终目标是形成一套统一的执行资源管控平面：业务策略决定资源优先级，执行引擎负责准入和调度，runtime feedback 负责校正逻辑模型，可观测性负责解释系统决策。</p>
+<p>最终目标是形成一套统一的执行资源管控平面：业务策略决定资源优先级，执行引擎负责准入和调度，运行时反馈负责校正逻辑模型，可观测性负责解释系统决策。</p>
 ]]></content>
       <categories>
         <category>PingCAP</category>
